@@ -1,257 +1,1456 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>Adobe-Style Glitch Poster Tool</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <title>HORSE RUNRUN - Team Mode (Modified)</title>
+  <style>
+    :root{
+      --bg: #0b0f14;
+      --panel: rgba(255,255,255,0.06);
+      --panel2: rgba(255,255,255,0.10);
+      --border: rgba(255,255,255,0.15);
+      --text: rgba(255,255,255,0.92);
+      --muted: rgba(255,255,255,0.65);
+      --accent: #7cf6ff;
+      --accent2: #ff7cf7;
+      --good: #67ff9b;
+      --warn: #ffd86b;
+      --bad: #ff6b6b;
+      --shadow: 0 14px 40px rgba(0,0,0,.45);
+      --radius: 16px;
+      --radius2: 22px;
 
-<style>
-:root{
-  --bg:#0f1115;
-  --panel:#151922;
-  --panel2:#10131a;
-  --border:#272c38;
-  --text:#e7eaf0;
-  --muted:#a9b0be;
-  --accent:#4aa3ff;
-  --shadow:0 8px 30px rgba(0,0,0,.35);
-  --radius:14px;
-}
-*{box-sizing:border-box;}
-html,body{
-  height:100%; margin:0;
-  background:var(--bg);
-  color:var(--text);
-  font-family: system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial;
-}
-.container{
-  height:100vh;
-  display:grid;
-  grid-template-columns:360px 1fr;
-  gap:16px;
-  padding:16px;
-}
-.panel{
-  background:linear-gradient(180deg,var(--panel),var(--panel2));
-  border:1px solid var(--border);
-  border-radius:var(--radius);
-  box-shadow:var(--shadow);
-  overflow:auto;
-}
-.panel h2{
-  margin:0;
-  padding:14px 16px;
-  border-bottom:1px solid var(--border);
-  font-size:16px;
-}
-.group{
-  padding:12px 16px;
-  border-bottom:1px solid var(--border);
-}
-.group label{
-  font-size:12px;
-  color:var(--muted);
-}
-.group input,
-.group textarea,
-.group select{
-  width:100%;
-  margin-top:6px;
-  background:#0b0d12;
-  color:var(--text);
-  border:1px solid var(--border);
-  border-radius:10px;
-  padding:8px;
-}
-.group input[type=range]{padding:0;}
-button{
-  width:100%;
-  margin-top:10px;
-  padding:10px;
-  background:linear-gradient(180deg,rgba(74,163,255,.2),rgba(74,163,255,.08));
-  border:1px solid rgba(74,163,255,.6);
-  border-radius:12px;
-  color:#fff;
-  font-weight:600;
-  cursor:pointer;
-}
-button:hover{filter:brightness(1.1);}
-.canvasWrap{
-  background:#0b0d12;
-  border:1px solid var(--border);
-  border-radius:var(--radius);
-  box-shadow:var(--shadow);
-  display:flex;
-  align-items:center;
-  justify-content:center;
-}
-canvas{
-  max-width:100%;
-  max-height:100%;
-  background:#fff;
-  border-radius:10px;
-}
-.small{
-  font-size:11px;
-  color:var(--muted);
-  margin-top:4px;
-}
-</style>
+      --horseSize: 40px;
+      --trackH: 88px;
+      --trackGap: 18px;
+    }
+
+    /* basic reset */
+    *{box-sizing:border-box;}
+    html,body{height:100%; margin:0; padding:0; background: radial-gradient(1200px 1200px at 30% 20%, rgba(124,246,255,0.16), transparent 60%),
+                                              radial-gradient(900px 900px at 80% 60%, rgba(255,124,247,0.14), transparent 55%),
+                                              var(--bg);
+              color:var(--text);
+              font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
+              overflow:hidden;
+    }
+
+    /* layout */
+    #app{
+      height:100%;
+      display:grid;
+      grid-template-columns: minmax(320px, 420px) 1fr;
+      gap: 18px;
+      padding: 18px;
+    }
+
+    @media (max-width: 980px){
+      #app{
+        grid-template-columns: 1fr;
+        grid-template-rows: auto 1fr;
+        overflow:hidden;
+      }
+    }
+
+    .card{
+      background: var(--panel);
+      border: 1px solid var(--border);
+      border-radius: var(--radius2);
+      box-shadow: var(--shadow);
+      overflow:hidden;
+      backdrop-filter: blur(10px);
+    }
+
+    .cardHeader{
+      padding: 14px 16px 10px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap:12px;
+    }
+    .titleWrap{
+      display:flex;
+      flex-direction:column;
+      gap:4px;
+      min-width:0;
+    }
+    .title{
+      font-weight: 800;
+      letter-spacing: 0.4px;
+      font-size: 15px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .subtitle{
+      font-size: 12px;
+      color: var(--muted);
+      line-height: 1.2;
+    }
+
+    .badge{
+      font-size: 11px;
+      padding: 6px 9px;
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      color: rgba(255,255,255,0.88);
+      display:flex;
+      align-items:center;
+      gap:8px;
+      user-select:none;
+      white-space:nowrap;
+    }
+    .dot{
+      width:8px; height:8px; border-radius:50%;
+      background: var(--warn);
+      box-shadow: 0 0 0 3px rgba(255,216,107,0.18);
+    }
+    .dot.good{background:var(--good); box-shadow: 0 0 0 3px rgba(103,255,155,0.18);}
+    .dot.bad{background:var(--bad); box-shadow: 0 0 0 3px rgba(255,107,107,0.18);}
+
+    /* left: control panel */
+    #panel{
+      display:flex;
+      flex-direction:column;
+      height:100%;
+      min-height: 500px;
+    }
+    #panelBody{
+      padding: 14px 16px 16px;
+      overflow:auto;
+    }
+    .section{
+      padding: 12px;
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: var(--radius);
+      background: rgba(255,255,255,0.04);
+      margin-bottom: 12px;
+    }
+    .section h3{
+      margin:0 0 8px 0;
+      font-size: 13px;
+      letter-spacing:0.3px;
+      color: rgba(255,255,255,0.86);
+    }
+    .row{
+      display:grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .row3{
+      display:grid;
+      grid-template-columns: 1fr 1fr 1fr;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .field{
+      display:flex;
+      flex-direction:column;
+      gap: 6px;
+      min-width:0;
+    }
+    label{
+      font-size: 11px;
+      color: var(--muted);
+      letter-spacing: 0.2px;
+    }
+    input[type="text"], input[type="number"], select{
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.14);
+      color: var(--text);
+      border-radius: 12px;
+      padding: 10px 10px;
+      outline:none;
+      font-size: 13px;
+    }
+    input[type="number"]{ padding-right: 6px; }
+    input[type="text"]::placeholder{color: rgba(255,255,255,0.35);}
+    input:focus, select:focus{
+      border-color: rgba(124,246,255,0.55);
+      box-shadow: 0 0 0 4px rgba(124,246,255,0.12);
+    }
+
+    .btnRow{
+      display:flex;
+      gap:10px;
+      flex-wrap:wrap;
+      margin-top: 10px;
+    }
+    button{
+      appearance:none;
+      border:none;
+      outline:none;
+      cursor:pointer;
+      border-radius: 14px;
+      padding: 11px 12px;
+      font-weight: 700;
+      letter-spacing: 0.2px;
+      font-size: 13px;
+      color: rgba(255,255,255,0.92);
+      background: linear-gradient(135deg, rgba(124,246,255,0.35), rgba(255,124,247,0.28));
+      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
+      border: 1px solid rgba(255,255,255,0.16);
+      transition: transform .12s ease, filter .12s ease;
+      user-select:none;
+      flex: 1;
+      min-width: 120px;
+    }
+    button:hover{ transform: translateY(-1px); filter: brightness(1.05);}
+    button:active{ transform: translateY(0px); filter: brightness(0.98);}
+
+    button.secondary{
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.16);
+      box-shadow:none;
+      flex: 0;
+      min-width: 110px;
+    }
+    button.danger{
+      background: rgba(255,107,107,0.16);
+      border: 1px solid rgba(255,107,107,0.30);
+      box-shadow:none;
+    }
+    button.small{
+      padding: 8px 10px;
+      font-size: 12px;
+      border-radius: 12px;
+      min-width: 100px;
+    }
+
+    .hint{
+      font-size: 12px;
+      color: rgba(255,255,255,0.62);
+      line-height: 1.3;
+      margin-top: 8px;
+    }
+
+    .teamList{
+      display:flex;
+      flex-direction:column;
+      gap: 10px;
+      margin-top: 10px;
+    }
+    .teamItem{
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.03);
+      border-radius: var(--radius);
+      padding: 10px;
+    }
+    .teamTop{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      margin-bottom: 8px;
+    }
+    .teamName{
+      font-weight: 800;
+      font-size: 13px;
+      letter-spacing: 0.2px;
+      min-width:0;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    .teamMeta{
+      font-size: 11px;
+      color: var(--muted);
+      white-space:nowrap;
+    }
+    .members{
+      display:flex;
+      flex-wrap:wrap;
+      gap: 8px;
+    }
+    .chip{
+      display:flex;
+      align-items:center;
+      gap: 7px;
+      padding: 7px 9px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.06);
+      border: 1px solid rgba(255,255,255,0.12);
+      font-size: 12px;
+    }
+    .chip .miniDot{
+      width: 8px; height: 8px; border-radius: 50%;
+      background: rgba(255,255,255,0.55);
+    }
+
+    /* right: race canvas */
+    #stage{
+      position:relative;
+      height:100%;
+      min-height: 500px;
+      display:flex;
+      flex-direction:column;
+    }
+    #stageBody{
+      flex:1;
+      position:relative;
+      padding: 14px;
+    }
+    .arena{
+      position:absolute;
+      inset: 14px;
+      border-radius: var(--radius2);
+      border: 1px solid rgba(255,255,255,0.12);
+      background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01));
+      overflow:hidden;
+    }
+
+    /* top status bar inside arena */
+    .arenaHeader{
+      position:absolute;
+      left: 12px;
+      right: 12px;
+      top: 10px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      z-index: 3;
+      pointer-events:none;
+    }
+    .arenaHeader .status{
+      pointer-events:auto;
+      padding: 8px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(0,0,0,0.25);
+      backdrop-filter: blur(8px);
+      font-size: 12px;
+      display:flex;
+      align-items:center;
+      gap: 10px;
+      color: rgba(255,255,255,0.9);
+      box-shadow: 0 10px 30px rgba(0,0,0,0.22);
+    }
+    .arenaHeader .status strong{
+      font-weight:800;
+      letter-spacing:0.2px;
+    }
+    .arenaHeader .pill{
+      padding: 6px 10px;
+      border-radius: 999px;
+      border: 1px solid rgba(255,255,255,0.14);
+      background: rgba(255,255,255,0.06);
+      font-size: 12px;
+      color: rgba(255,255,255,0.88);
+      pointer-events:auto;
+      user-select:none;
+    }
+    .arenaHeader .pill span{
+      color: rgba(255,255,255,0.65);
+      font-weight:700;
+      margin-right: 6px;
+    }
+
+    .tracks{
+      position:absolute;
+      left: 0;
+      right: 0;
+      top: 52px;
+      bottom: 0;
+      padding: 12px 14px 14px 14px;
+      overflow:auto;
+    }
+
+    .track{
+      position:relative;
+      height: var(--trackH);
+      border-radius: 18px;
+      background: rgba(255,255,255,0.03);
+      border: 1px solid rgba(255,255,255,0.10);
+      margin-bottom: var(--trackGap);
+      overflow:hidden;
+    }
+    .laneLabel{
+      position:absolute;
+      left: 12px;
+      top: 10px;
+      display:flex;
+      flex-direction:column;
+      gap: 2px;
+      z-index:2;
+      pointer-events:none;
+    }
+    .laneLabel .name{
+      font-size: 13px;
+      font-weight: 900;
+      letter-spacing: 0.2px;
+      max-width: 220px;
+      overflow:hidden;
+      text-overflow:ellipsis;
+      white-space:nowrap;
+    }
+    .laneLabel .sub{
+      font-size: 11px;
+      color: rgba(255,255,255,0.62);
+      white-space:nowrap;
+    }
+    .finish{
+      position:absolute;
+      right: 48px;
+      top: 0;
+      bottom: 0;
+      width: 2px;
+      background: repeating-linear-gradient(
+        to bottom,
+        rgba(255,255,255,0.85),
+        rgba(255,255,255,0.85) 8px,
+        rgba(255,255,255,0.15) 8px,
+        rgba(255,255,255,0.15) 16px
+      );
+      opacity: 0.55;
+    }
+
+    .horse{
+      position:absolute;
+      left: 14px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: var(--horseSize);
+      height: var(--horseSize);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      border-radius: 14px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid rgba(255,255,255,0.16);
+      box-shadow: 0 16px 30px rgba(0,0,0,0.28);
+      font-size: 22px;
+      will-change: transform, left;
+      user-select:none;
+    }
+
+    .horse .emoji{
+      filter: drop-shadow(0 6px 10px rgba(0,0,0,0.35));
+    }
+
+    .progressBar{
+      position:absolute;
+      left: 0;
+      top: 0;
+      bottom: 0;
+      width: 0%;
+      background: linear-gradient(90deg, rgba(124,246,255,0.12), rgba(255,124,247,0.10));
+      pointer-events:none;
+    }
+
+    .trackFooter{
+      position:absolute;
+      left: 12px;
+      right: 12px;
+      bottom: 10px;
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      z-index:2;
+      pointer-events:none;
+    }
+    .trackFooter .meter{
+      pointer-events:auto;
+      font-size: 11px;
+      color: rgba(255,255,255,0.68);
+      background: rgba(0,0,0,0.20);
+      border: 1px solid rgba(255,255,255,0.10);
+      border-radius: 999px;
+      padding: 5px 8px;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 10px 20px rgba(0,0,0,0.18);
+      white-space:nowrap;
+    }
+    .trackFooter .meter strong{
+      color: rgba(255,255,255,0.92);
+      font-weight:900;
+    }
+
+    /* overlays */
+    .overlay{
+      position:absolute;
+      inset: 0;
+      background: rgba(0,0,0,0.65);
+      display:none;
+      align-items:center;
+      justify-content:center;
+      z-index: 50;
+      backdrop-filter: blur(8px);
+      padding: 20px;
+    }
+    .overlay.show{display:flex;}
+    .modal{
+      width: min(720px, 94vw);
+      max-height: 86vh;
+      overflow:auto;
+      border-radius: var(--radius2);
+      background: rgba(20,24,32,0.88);
+      border: 1px solid rgba(255,255,255,0.14);
+      box-shadow: 0 22px 60px rgba(0,0,0,0.50);
+      padding: 16px;
+    }
+    .modal h2{
+      margin: 0 0 6px 0;
+      font-size: 18px;
+      letter-spacing:0.3px;
+    }
+    .modal p{
+      margin: 0 0 12px 0;
+      color: rgba(255,255,255,0.72);
+      line-height: 1.35;
+      font-size: 13px;
+    }
+    .table{
+      width:100%;
+      border-collapse: collapse;
+      overflow:hidden;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.12);
+    }
+    .table th, .table td{
+      padding: 10px;
+      font-size: 13px;
+      border-bottom: 1px solid rgba(255,255,255,0.10);
+      text-align:left;
+    }
+    .table th{
+      font-size: 12px;
+      color: rgba(255,255,255,0.72);
+      font-weight:800;
+      background: rgba(255,255,255,0.05);
+    }
+    .table tr:last-child td{border-bottom:none;}
+    .modalActions{
+      margin-top: 12px;
+      display:flex;
+      justify-content:flex-end;
+      gap: 10px;
+    }
+
+    /* tiny scrollbars */
+    ::-webkit-scrollbar{height:10px;width:10px}
+    ::-webkit-scrollbar-thumb{background: rgba(255,255,255,0.10); border-radius:999px}
+    ::-webkit-scrollbar-track{background: rgba(0,0,0,0.10)}
+
+    /* helpers */
+    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
+    .sep{height:1px;background: rgba(255,255,255,0.10); margin: 10px 0;}
+
+    .toggleRow{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      gap: 10px;
+      margin-top: 8px;
+      padding: 10px;
+      border-radius: 14px;
+      border: 1px solid rgba(255,255,255,0.10);
+      background: rgba(255,255,255,0.03);
+    }
+    .toggleRow .left{
+      display:flex;
+      flex-direction:column;
+      gap:2px;
+      min-width:0;
+    }
+    .toggleRow .left .t{
+      font-size: 13px;
+      font-weight: 800;
+      letter-spacing:0.2px;
+      white-space:nowrap;
+      overflow:hidden;
+      text-overflow:ellipsis;
+    }
+    .toggleRow .left .d{
+      font-size: 12px;
+      color: rgba(255,255,255,0.62);
+      line-height: 1.2;
+    }
+
+    /* switch */
+    .switch{
+      position:relative;
+      width: 44px;
+      height: 26px;
+      background: rgba(255,255,255,0.14);
+      border: 1px solid rgba(255,255,255,0.18);
+      border-radius: 999px;
+      cursor:pointer;
+      flex: 0 0 auto;
+      box-shadow: inset 0 0 0 2px rgba(0,0,0,0.08);
+    }
+    .switch::after{
+      content:"";
+      position:absolute;
+      top: 3px;
+      left: 3px;
+      width: 20px;
+      height: 20px;
+      border-radius: 999px;
+      background: rgba(255,255,255,0.90);
+      transition: transform .18s ease;
+      box-shadow: 0 8px 18px rgba(0,0,0,0.25);
+    }
+    .switch.on{
+      background: rgba(103,255,155,0.22);
+      border-color: rgba(103,255,155,0.35);
+    }
+    .switch.on::after{ transform: translateX(18px); }
+
+    /* mobile friendly button sizing */
+    @media (max-width: 560px){
+      button{ min-width: 100px; }
+      .row{ grid-template-columns: 1fr; }
+      .row3{ grid-template-columns: 1fr; }
+      #app{ padding: 12px; gap: 12px; }
+      .arena{ inset: 12px; }
+      .tracks{ padding: 10px; }
+    }
+  </style>
 </head>
-
 <body>
-<div class="container">
-  <div class="panel">
-    <h2>Adobe-style Glitch Poster</h2>
+  <div id="app">
+    <!-- LEFT: CONTROL PANEL -->
+    <div id="panel" class="card">
+      <div class="cardHeader">
+        <div class="titleWrap">
+          <div class="title">HORSE RUNRUN · Team Mode</div>
+          <div class="subtitle">Create teams & start a race. Tap “Advance” to move. Finish line at 100.</div>
+        </div>
+        <div class="badge" id="connBadge"><span class="dot" id="connDot"></span><span id="connText">Local</span></div>
+      </div>
 
-    <div class="group">
-      <label>文字（留空则使用图片）</label>
-      <textarea id="textInput">NIKE
-JUST
-DO
-IT</textarea>
+      <div id="panelBody">
+        <div class="section">
+          <h3>Game Setup</h3>
+          <div class="row">
+            <div class="field">
+              <label for="gameTitle">Room / Title</label>
+              <input id="gameTitle" type="text" placeholder="e.g., Horse Runrun Night" value="Horse Runrun Team Mode"/>
+            </div>
+            <div class="field">
+              <label for="finishLine">Finish Line</label>
+              <input id="finishLine" type="number" min="10" max="500" value="100"/>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label for="stepMin">Step Min</label>
+              <input id="stepMin" type="number" min="1" max="99" value="4"/>
+            </div>
+            <div class="field">
+              <label for="stepMax">Step Max</label>
+              <input id="stepMax" type="number" min="1" max="200" value="12"/>
+            </div>
+          </div>
+
+          <div class="toggleRow">
+            <div class="left">
+              <div class="t">Auto-Rank Updates</div>
+              <div class="d">Sort tracks by current progress while racing</div>
+            </div>
+            <div class="switch on" id="toggleAutoRank" role="switch" aria-checked="true"></div>
+          </div>
+
+          <div class="btnRow">
+            <button id="btnStart">Start / Restart</button>
+            <button id="btnAdvance" class="secondary">Advance</button>
+            <button id="btnFinish" class="secondary">Finish Now</button>
+          </div>
+          <div class="hint">Tip: “Advance” will move each team forward by a random step between Step Min & Step Max. “Finish Now” ends immediately and shows results.</div>
+        </div>
+
+        <div class="section">
+          <h3>Teams</h3>
+          <div class="row">
+            <div class="field">
+              <label for="teamName">Team name</label>
+              <input id="teamName" type="text" placeholder="e.g., Blue Rockets"/>
+            </div>
+            <div class="field">
+              <label for="teamEmoji">Emoji</label>
+              <input id="teamEmoji" type="text" placeholder="🐴" value="🐴"/>
+            </div>
+          </div>
+
+          <div class="row">
+            <div class="field">
+              <label for="teamMembers">Members (comma-separated)</label>
+              <input id="teamMembers" type="text" placeholder="e.g., A, B, C"/>
+            </div>
+            <div class="field">
+              <label for="teamColor">Lane style</label>
+              <select id="teamColor">
+                <option value="aqua">Aqua</option>
+                <option value="pink">Pink</option>
+                <option value="lime">Lime</option>
+                <option value="amber">Amber</option>
+                <option value="violet">Violet</option>
+                <option value="gray">Gray</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="btnRow">
+            <button id="btnAddTeam" class="secondary">Add Team</button>
+            <button id="btnClearTeams" class="danger secondary">Clear All</button>
+          </div>
+
+          <div class="teamList" id="teamList"></div>
+        </div>
+
+        <div class="section">
+          <h3>Export / Import</h3>
+          <div class="row">
+            <div class="field">
+              <label for="exportBox">State (JSON)</label>
+              <input id="exportBox" type="text" placeholder="Click Export to copy current state"/>
+            </div>
+            <div class="field">
+              <label>&nbsp;</label>
+              <div class="btnRow" style="margin-top:0;">
+                <button id="btnExport" class="secondary small">Export</button>
+                <button id="btnImport" class="secondary small">Import</button>
+              </div>
+            </div>
+          </div>
+          <div class="hint">Export gives a JSON snapshot you can paste elsewhere. Import will replace teams + settings.</div>
+        </div>
+
+        <div class="section">
+          <h3>Notes</h3>
+          <div class="hint">
+            - This is a local-only, single-device version. <br/>
+            - If you want multi-device sync (host + audience), tell me your desired flow and I can wire WebRTC or WebSocket.
+          </div>
+        </div>
+      </div>
     </div>
 
-    <div class="group">
-      <label>上传图片（可选）</label>
-      <input type="file" id="imgInput" accept="image/*">
-    </div>
+    <!-- RIGHT: STAGE -->
+    <div id="stage" class="card">
+      <div class="cardHeader">
+        <div class="titleWrap">
+          <div class="title" id="stageTitle">Race Arena</div>
+          <div class="subtitle" id="stageSubtitle">Add teams on the left, then start.</div>
+        </div>
+        <div class="badge"><span class="dot good" id="raceDot"></span><span id="raceText">Ready</span></div>
+      </div>
 
-    <div class="group">
-      <label>阈值 Threshold</label>
-      <input type="range" id="threshold" min="0" max="255" value="150">
-    </div>
+      <div id="stageBody">
+        <div class="arena" id="arena">
+          <div class="arenaHeader">
+            <div class="status" id="statusLeft">
+              <strong id="statusPhase">Idle</strong>
+              <span id="statusInfo" class="mono" style="color: rgba(255,255,255,0.75);">0 teams</span>
+            </div>
+            <div class="pill" id="statusRight"><span>Finish:</span><strong id="finishLabel">100</strong></div>
+          </div>
 
-    <div class="group">
-      <label>行位移 Glitch X</label>
-      <input type="range" id="rowShift" min="0" max="40" value="18">
-    </div>
+          <div class="tracks" id="tracks"></div>
+        </div>
 
-    <div class="group">
-      <label>列位移 Glitch Y</label>
-      <input type="range" id="colShift" min="0" max="20" value="6">
-    </div>
+        <!-- RESULTS OVERLAY -->
+        <div class="overlay" id="overlay">
+          <div class="modal">
+            <h2>Results</h2>
+            <p id="resultsSub">—</p>
+            <table class="table" id="resultsTable">
+              <thead>
+                <tr>
+                  <th style="width:60px;">Rank</th>
+                  <th>Team</th>
+                  <th style="width:120px;">Distance</th>
+                  <th>Members</th>
+                </tr>
+              </thead>
+              <tbody></tbody>
+            </table>
 
-    <div class="group">
-      <label>条纹密度 Barcode Density</label>
-      <input type="range" id="stripeDensity" min="2" max="40" value="14">
-    </div>
+            <div class="modalActions">
+              <button id="btnCloseOverlay" class="secondary">Close</button>
+            </div>
+          </div>
+        </div>
 
-    <div class="group">
-      <label>切片强度 Edge Slice</label>
-      <input type="range" id="sliceStrength" min="0" max="40" value="12">
-    </div>
-
-    <div class="group">
-      <button onclick="render()">重新生成</button>
-      <button onclick="download()">导出 PNG</button>
-      <div class="small">Canvas / 无依赖 / 可直接 Vercel 部署</div>
+      </div>
     </div>
   </div>
 
-  <div class="canvasWrap">
-    <canvas id="canvas" width="900" height="1200"></canvas>
-  </div>
-</div>
+  <script>
+    /*****************************************************************
+     * HORSE RUNRUN TEAM MODE (Modified)
+     * Local single-device. Add teams, start/restart, advance, finish.
+     *****************************************************************/
 
-<script>
-const canvas = document.getElementById("canvas");
-const ctx = canvas.getContext("2d");
-let sourceImg = null;
+    // --- DOM helpers
+    const $ = (sel, root=document) => root.querySelector(sel);
+    const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
+    const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
+    const randInt = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
 
-document.getElementById("imgInput").onchange = e=>{
-  const file = e.target.files[0];
-  if(!file) return;
-  const img = new Image();
-  img.onload = ()=>{ sourceImg = img; render(); };
-  img.src = URL.createObjectURL(file);
-};
+    // --- State
+    let state = {
+      settings: {
+        title: "Horse Runrun Team Mode",
+        finishLine: 100,
+        stepMin: 4,
+        stepMax: 12,
+        autoRank: true
+      },
+      phase: "idle", // idle | racing | finished
+      teams: [
+        // { id, name, emoji, color, members:[...], distance, finishedAtStep }
+      ],
+      stepCount: 0,
+      startedAt: null
+    };
 
-function drawText(){
-  ctx.fillStyle="#fff";
-  ctx.fillRect(0,0,canvas.width,canvas.height);
-  ctx.fillStyle="#000";
-  ctx.font="bold 220px Helvetica,Arial";
-  ctx.textAlign="center";
-  ctx.textBaseline="middle";
-  const lines = document.getElementById("textInput").value.split("\n");
-  const lh = 220;
-  const startY = canvas.height/2 - (lines.length-1)*lh/2;
-  lines.forEach((l,i)=>{
-    ctx.fillText(l, canvas.width/2, startY + i*lh);
-  });
-}
+    const COLOR_THEMES = {
+      aqua:  { bar: "rgba(124,246,255,0.14)", glow: "rgba(124,246,255,0.18)", horseBg:"rgba(124,246,255,0.10)" },
+      pink:  { bar: "rgba(255,124,247,0.14)", glow: "rgba(255,124,247,0.18)", horseBg:"rgba(255,124,247,0.10)" },
+      lime:  { bar: "rgba(103,255,155,0.14)", glow: "rgba(103,255,155,0.18)", horseBg:"rgba(103,255,155,0.10)" },
+      amber: { bar: "rgba(255,216,107,0.14)", glow: "rgba(255,216,107,0.18)", horseBg:"rgba(255,216,107,0.10)" },
+      violet:{ bar: "rgba(180,124,255,0.14)", glow: "rgba(180,124,255,0.18)", horseBg:"rgba(180,124,255,0.10)" },
+      gray:  { bar: "rgba(255,255,255,0.10)", glow: "rgba(255,255,255,0.12)", horseBg:"rgba(255,255,255,0.06)" }
+    };
 
-function applyBW(th){
-  const img = ctx.getImageData(0,0,canvas.width,canvas.height);
-  for(let i=0;i<img.data.length;i+=4){
-    const y = 0.2126*img.data[i]+0.7152*img.data[i+1]+0.0722*img.data[i+2];
-    const v = y>th?255:0;
-    img.data[i]=img.data[i+1]=img.data[i+2]=v;
-  }
-  ctx.putImageData(img,0,0);
-}
+    // --- Elements
+    const elTitle = $("#gameTitle");
+    const elFinish = $("#finishLine");
+    const elStepMin = $("#stepMin");
+    const elStepMax = $("#stepMax");
+    const elAutoRank = $("#toggleAutoRank");
+    const elTeamName = $("#teamName");
+    const elTeamEmoji = $("#teamEmoji");
+    const elTeamMembers = $("#teamMembers");
+    const elTeamColor = $("#teamColor");
+    const elTeamList = $("#teamList");
+    const elTracks = $("#tracks");
 
-function glitch(rowShift,colShift){
-  const img = ctx.getImageData(0,0,canvas.width,canvas.height);
-  const w=canvas.width,h=canvas.height;
-  for(let y=0;y<h;y+=8){
-    if(Math.random()<0.35){
-      const dx=(Math.random()*2-1)*rowShift;
-      ctx.putImageData(img,dx,y,0,y,w,8);
+    const elBtnStart = $("#btnStart");
+    const elBtnAdvance = $("#btnAdvance");
+    const elBtnFinish = $("#btnFinish");
+    const elBtnAddTeam = $("#btnAddTeam");
+    const elBtnClearTeams = $("#btnClearTeams");
+    const elBtnExport = $("#btnExport");
+    const elBtnImport = $("#btnImport");
+    const elExportBox = $("#exportBox");
+
+    const elStageTitle = $("#stageTitle");
+    const elStageSub = $("#stageSubtitle");
+    const elRaceText = $("#raceText");
+    const elRaceDot = $("#raceDot");
+
+    const elStatusPhase = $("#statusPhase");
+    const elStatusInfo = $("#statusInfo");
+    const elFinishLabel = $("#finishLabel");
+
+    const elOverlay = $("#overlay");
+    const elResultsSub = $("#resultsSub");
+    const elResultsTbody = $("#resultsTable tbody");
+    const elBtnCloseOverlay = $("#btnCloseOverlay");
+
+    // --- Init UI from state
+    function syncInputsFromState(){
+      elTitle.value = state.settings.title;
+      elFinish.value = state.settings.finishLine;
+      elStepMin.value = state.settings.stepMin;
+      elStepMax.value = state.settings.stepMax;
+      elAutoRank.classList.toggle("on", !!state.settings.autoRank);
+      elAutoRank.setAttribute("aria-checked", !!state.settings.autoRank);
+      elFinishLabel.textContent = String(state.settings.finishLine);
+      elStageTitle.textContent = state.settings.title || "Race Arena";
     }
-  }
-  for(let x=0;x<w;x+=12){
-    if(Math.random()<0.25){
-      const dy=(Math.random()*2-1)*colShift;
-      ctx.putImageData(img,x,dy,x,0,12,h);
+
+    function parseMembers(str){
+      return (str || "")
+        .split(",")
+        .map(s => s.trim())
+        .filter(Boolean);
     }
-  }
-}
 
-function stripes(density){
-  const h=canvas.height,w=canvas.width;
-  let y=0, step=100/density;
-  while(y<h){
-    ctx.fillStyle=Math.random()>0.5?"#000":"#fff";
-    ctx.fillRect(w*0.65,y,w*0.3,step);
-    y+=step;
-  }
-}
-
-function edgeSlice(strength){
-  if(strength<=0) return;
-  const img = ctx.getImageData(0,0,canvas.width,canvas.height);
-  for(let i=0;i<10;i++){
-    if(Math.random()<0.5){
-      const y=Math.random()*canvas.height;
-      const h=Math.random()*strength;
-      ctx.putImageData(img,(Math.random()*2-1)*strength,y,0,y,canvas.width,h);
+    function uid(){
+      return Math.random().toString(16).slice(2) + Date.now().toString(16).slice(2);
     }
-  }
-}
 
-function render(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-  if(sourceImg){
-    ctx.drawImage(sourceImg,0,0,canvas.width,canvas.height);
-  }else{
-    drawText();
-  }
-  applyBW(+threshold.value);
-  glitch(+rowShift.value,+colShift.value);
-  stripes(+stripeDensity.value);
-  edgeSlice(+sliceStrength.value);
-}
+    // --- Rendering
+    function renderTeamsList(){
+      elTeamList.innerHTML = "";
+      if(state.teams.length === 0){
+        const empty = document.createElement("div");
+        empty.className = "hint";
+        empty.textContent = "No teams yet. Add one above.";
+        elTeamList.appendChild(empty);
+        return;
+      }
 
-function download(){
-  const a=document.createElement("a");
-  a.download="glitch-poster.png";
-  a.href=canvas.toDataURL("image/png");
-  a.click();
-}
+      state.teams.forEach((t, idx) => {
+        const item = document.createElement("div");
+        item.className = "teamItem";
+        const top = document.createElement("div");
+        top.className = "teamTop";
 
-render();
-</script>
+        const name = document.createElement("div");
+        name.className = "teamName";
+        name.textContent = `${t.emoji || "🐴"} ${t.name || ("Team " + (idx+1))}`;
+
+        const meta = document.createElement("div");
+        meta.className = "teamMeta mono";
+        meta.textContent = `Members: ${t.members.length} · Color: ${t.color}`;
+
+        top.appendChild(name);
+        top.appendChild(meta);
+
+        const members = document.createElement("div");
+        members.className = "members";
+
+        (t.members.length ? t.members : ["(no members)"]).forEach(m => {
+          const chip = document.createElement("div");
+          chip.className = "chip";
+          const dot = document.createElement("span");
+          dot.className = "miniDot";
+          const text = document.createElement("span");
+          text.textContent = m;
+          chip.appendChild(dot);
+          chip.appendChild(text);
+          members.appendChild(chip);
+        });
+
+        const btns = document.createElement("div");
+        btns.className = "btnRow";
+        btns.style.marginTop = "10px";
+
+        const btnEdit = document.createElement("button");
+        btnEdit.className = "secondary small";
+        btnEdit.textContent = "Edit";
+        btnEdit.onclick = () => loadTeamIntoForm(t.id);
+
+        const btnRemove = document.createElement("button");
+        btnRemove.className = "danger secondary small";
+        btnRemove.textContent = "Remove";
+        btnRemove.onclick = () => removeTeam(t.id);
+
+        btns.appendChild(btnEdit);
+        btns.appendChild(btnRemove);
+
+        item.appendChild(top);
+        item.appendChild(members);
+        item.appendChild(btns);
+        elTeamList.appendChild(item);
+      });
+    }
+
+    function renderTracks(){
+      elTracks.innerHTML = "";
+
+      let teams = [...state.teams];
+
+      // optional auto rank during race
+      if(state.settings.autoRank && state.phase !== "idle"){
+        teams.sort((a,b) => (b.distance - a.distance));
+      }
+
+      teams.forEach((t, idx) => {
+        const track = document.createElement("div");
+        track.className = "track";
+        track.dataset.teamId = t.id;
+
+        const theme = COLOR_THEMES[t.color] || COLOR_THEMES.gray;
+
+        const progress = document.createElement("div");
+        progress.className = "progressBar";
+        const pct = state.settings.finishLine > 0 ? (t.distance / state.settings.finishLine) * 100 : 0;
+        progress.style.width = `${clamp(pct, 0, 100)}%`;
+        progress.style.background = `linear-gradient(90deg, ${theme.bar}, rgba(255,255,255,0.02))`;
+        track.appendChild(progress);
+
+        const label = document.createElement("div");
+        label.className = "laneLabel";
+        const nm = document.createElement("div");
+        nm.className = "name";
+        nm.textContent = `${t.emoji || "🐴"} ${t.name}`;
+        const sub = document.createElement("div");
+        sub.className = "sub mono";
+        sub.textContent = `#${idx+1} · ${t.members.length} members`;
+        label.appendChild(nm);
+        label.appendChild(sub);
+        track.appendChild(label);
+
+        const finish = document.createElement("div");
+        finish.className = "finish";
+        track.appendChild(finish);
+
+        const horse = document.createElement("div");
+        horse.className = "horse";
+        horse.style.background = theme.horseBg;
+        horse.style.borderColor = "rgba(255,255,255,0.16)";
+        horse.style.boxShadow = `0 16px 30px rgba(0,0,0,0.28), 0 0 0 4px ${theme.glow}`;
+        const emoji = document.createElement("span");
+        emoji.className = "emoji";
+        emoji.textContent = t.emoji || "🐴";
+        horse.appendChild(emoji);
+
+        // position horse based on distance
+        // available width: track width - padding - finish offset
+        // we'll compute in RAF after adding to DOM for accurate width
+        track.appendChild(horse);
+
+        const footer = document.createElement("div");
+        footer.className = "trackFooter";
+        const meter = document.createElement("div");
+        meter.className = "meter mono";
+        meter.innerHTML = `<strong>${t.distance}</strong> / ${state.settings.finishLine}`;
+        footer.appendChild(meter);
+
+        const meter2 = document.createElement("div");
+        meter2.className = "meter mono";
+        const finished = (t.distance >= state.settings.finishLine);
+        meter2.innerHTML = finished
+          ? `<strong style="color: rgba(103,255,155,0.92);">FINISHED</strong>`
+          : `<strong>STEP</strong> ${state.stepCount}`;
+        footer.appendChild(meter2);
+
+        track.appendChild(footer);
+
+        elTracks.appendChild(track);
+
+        requestAnimationFrame(() => positionHorse(track, horse, t.distance));
+      });
+
+      // stage subtitle
+      if(state.teams.length === 0){
+        elStageSub.textContent = "Add teams on the left, then start.";
+      }else{
+        elStageSub.textContent = state.phase === "idle"
+          ? "Ready. Press Start."
+          : state.phase === "racing"
+            ? "Racing… Tap Advance to move."
+            : "Finished. View results below.";
+      }
+    }
+
+    function positionHorse(trackEl, horseEl, distance){
+      const finishLine = state.settings.finishLine || 100;
+      const pct = finishLine > 0 ? clamp(distance / finishLine, 0, 1) : 0;
+
+      // compute left range
+      const trackRect = trackEl.getBoundingClientRect();
+      const horseRect = horseEl.getBoundingClientRect();
+      const paddingLeft = 14;
+      const paddingRight = 48; // align with finish line marker
+      const maxLeft = trackRect.width - paddingRight - horseRect.width;
+      const left = paddingLeft + (maxLeft - paddingLeft) * pct;
+
+      horseEl.style.left = `${left}px`;
+    }
+
+    // --- Status UI
+    function setPhase(phase){
+      state.phase = phase;
+      elStatusPhase.textContent = phase.toUpperCase();
+      elStatusInfo.textContent = `${state.teams.length} teams · step ${state.stepCount}`;
+
+      if(phase === "idle"){
+        elRaceText.textContent = "Ready";
+        elRaceDot.className = "dot good";
+      }else if(phase === "racing"){
+        elRaceText.textContent = "Racing";
+        elRaceDot.className = "dot";
+      }else{
+        elRaceText.textContent = "Finished";
+        elRaceDot.className = "dot bad";
+      }
+    }
+
+    // --- Team ops
+    function addTeamFromForm(){
+      const name = (elTeamName.value || "").trim() || `Team ${state.teams.length+1}`;
+      const emoji = (elTeamEmoji.value || "🐴").trim() || "🐴";
+      const members = parseMembers(elTeamMembers.value);
+      const color = elTeamColor.value || "aqua";
+
+      const t = {
+        id: uid(),
+        name, emoji, members, color,
+        distance: 0,
+        finishedAtStep: null
+      };
+
+      state.teams.push(t);
+      clearTeamForm();
+      renderAll();
+      saveLocal();
+    }
+
+    function clearTeamForm(){
+      elTeamName.value = "";
+      elTeamEmoji.value = "🐴";
+      elTeamMembers.value = "";
+      elTeamColor.value = "aqua";
+      elBtnAddTeam.textContent = "Add Team";
+      elBtnAddTeam.dataset.editing = "";
+    }
+
+    function loadTeamIntoForm(teamId){
+      const t = state.teams.find(x => x.id === teamId);
+      if(!t) return;
+      elTeamName.value = t.name;
+      elTeamEmoji.value = t.emoji;
+      elTeamMembers.value = t.members.join(", ");
+      elTeamColor.value = t.color;
+      elBtnAddTeam.textContent = "Save Team";
+      elBtnAddTeam.dataset.editing = teamId;
+    }
+
+    function saveEditedTeam(teamId){
+      const t = state.teams.find(x => x.id === teamId);
+      if(!t) return;
+
+      t.name = (elTeamName.value || "").trim() || t.name;
+      t.emoji = (elTeamEmoji.value || "").trim() || t.emoji;
+      t.members = parseMembers(elTeamMembers.value);
+      t.color = elTeamColor.value || t.color;
+
+      clearTeamForm();
+      renderAll();
+      saveLocal();
+    }
+
+    function removeTeam(teamId){
+      state.teams = state.teams.filter(t => t.id !== teamId);
+      renderAll();
+      saveLocal();
+    }
+
+    function clearAllTeams(){
+      state.teams = [];
+      state.stepCount = 0;
+      state.startedAt = null;
+      setPhase("idle");
+      renderAll();
+      saveLocal();
+    }
+
+    // --- Game ops
+    function startRace(){
+      // update settings from inputs
+      applySettingsFromInputs();
+
+      // reset distances
+      state.teams.forEach(t => {
+        t.distance = 0;
+        t.finishedAtStep = null;
+      });
+
+      state.stepCount = 0;
+      state.startedAt = Date.now();
+      setPhase("racing");
+      renderAll();
+      saveLocal();
+    }
+
+    function applySettingsFromInputs(){
+      const finish = clamp(parseInt(elFinish.value || "100", 10), 10, 500);
+      const stepMin = clamp(parseInt(elStepMin.value || "4", 10), 1, 99);
+      const stepMax = clamp(parseInt(elStepMax.value || "12", 10), 1, 200);
+
+      state.settings.title = (elTitle.value || "").trim() || state.settings.title;
+      state.settings.finishLine = finish;
+      state.settings.stepMin = Math.min(stepMin, stepMax);
+      state.settings.stepMax = Math.max(stepMin, stepMax);
+      syncInputsFromState();
+    }
+
+    function advanceStep(){
+      if(state.phase !== "racing") return;
+      applySettingsFromInputs();
+
+      state.stepCount += 1;
+      const { stepMin, stepMax, finishLine } = state.settings;
+
+      state.teams.forEach(t => {
+        if(t.distance >= finishLine) return;
+        const step = randInt(stepMin, stepMax);
+        t.distance = clamp(t.distance + step, 0, finishLine);
+        if(t.distance >= finishLine && t.finishedAtStep == null){
+          t.finishedAtStep = state.stepCount;
+        }
+      });
+
+      // check finish
+      const allDone = state.teams.length > 0 && state.teams.every(t => t.distance >= finishLine);
+      if(allDone){
+        finishRace("All teams reached the finish line.");
+      }
+
+      renderAll();
+      saveLocal();
+    }
+
+    function finishRace(reason="Finished"){
+      if(state.phase === "finished") return;
+      setPhase("finished");
+      showResults(reason);
+      renderAll();
+      saveLocal();
+    }
+
+    // --- Results
+    function getRankedTeams(){
+      const finishLine = state.settings.finishLine;
+      const teams = [...state.teams];
+
+      // Primary: finished earlier step; Secondary: higher distance; Tertiary: original order
+      teams.sort((a,b) => {
+        const af = (a.distance >= finishLine);
+        const bf = (b.distance >= finishLine);
+
+        if(af && bf){
+          // both finished: smaller finishedAtStep wins (null last)
+          const as = a.finishedAtStep ?? 1e9;
+          const bs = b.finishedAtStep ?? 1e9;
+          if(as !== bs) return as - bs;
+          return b.distance - a.distance;
+        }
+        if(af && !bf) return -1;
+        if(!af && bf) return 1;
+
+        // neither finished
+        if(b.distance !== a.distance) return b.distance - a.distance;
+        return 0;
+      });
+
+      return teams;
+    }
+
+    function showResults(reason){
+      const ranked = getRankedTeams();
+      elResultsTbody.innerHTML = "";
+
+      const started = state.startedAt ? new Date(state.startedAt) : null;
+      const elapsed = state.startedAt ? Math.max(0, Date.now() - state.startedAt) : 0;
+      const seconds = Math.round(elapsed/1000);
+
+      elResultsSub.textContent = `${reason} · Steps: ${state.stepCount} · Elapsed: ${seconds}s`;
+
+      ranked.forEach((t, idx) => {
+        const tr = document.createElement("tr");
+        const tdRank = document.createElement("td");
+        tdRank.textContent = String(idx+1);
+        const tdTeam = document.createElement("td");
+        tdTeam.textContent = `${t.emoji || "🐴"} ${t.name}`;
+        const tdDist = document.createElement("td");
+        tdDist.className = "mono";
+        tdDist.textContent = `${t.distance}/${state.settings.finishLine}`;
+        const tdMembers = document.createElement("td");
+        tdMembers.textContent = t.members.join(", ") || "(no members)";
+
+        tr.appendChild(tdRank);
+        tr.appendChild(tdTeam);
+        tr.appendChild(tdDist);
+        tr.appendChild(tdMembers);
+        elResultsTbody.appendChild(tr);
+      });
+
+      elOverlay.classList.add("show");
+    }
+
+    function hideResults(){
+      elOverlay.classList.remove("show");
+    }
+
+    // --- Export/Import
+    function exportState(){
+      const snapshot = JSON.stringify(state);
+      elExportBox.value = snapshot;
+      try{
+        elExportBox.select();
+        document.execCommand("copy");
+      }catch(e){}
+    }
+
+    function importState(){
+      const raw = (elExportBox.value || "").trim();
+      if(!raw) return;
+      try{
+        const obj = JSON.parse(raw);
+        // basic validation
+        if(!obj || typeof obj !== "object") throw new Error("Invalid JSON");
+        if(!obj.settings || !Array.isArray(obj.teams)) throw new Error("Missing fields");
+        state = obj;
+        // ensure defaults
+        state.settings = Object.assign({
+          title: "Horse Runrun Team Mode",
+          finishLine: 100,
+          stepMin: 4,
+          stepMax: 12,
+          autoRank: true
+        }, state.settings || {});
+        state.teams = (state.teams || []).map(t => ({
+          id: t.id || uid(),
+          name: t.name || "Team",
+          emoji: t.emoji || "🐴",
+          color: t.color || "aqua",
+          members: Array.isArray(t.members) ? t.members : [],
+          distance: Number.isFinite(t.distance) ? t.distance : 0,
+          finishedAtStep: (t.finishedAtStep == null ? null : t.finishedAtStep)
+        }));
+        state.stepCount = Number.isFinite(state.stepCount) ? state.stepCount : 0;
+        state.phase = state.phase || "idle";
+        state.startedAt = state.startedAt || null;
+
+        syncInputsFromState();
+        setPhase(state.phase);
+        renderAll();
+        saveLocal();
+      }catch(e){
+        alert("Import failed: " + e.message);
+      }
+    }
+
+    // --- Local persistence
+    const LS_KEY = "horse_runrun_team_mode_modified_state_v1";
+    function saveLocal(){
+      try{
+        localStorage.setItem(LS_KEY, JSON.stringify(state));
+      }catch(e){}
+    }
+    function loadLocal(){
+      try{
+        const raw = localStorage.getItem(LS_KEY);
+        if(!raw) return false;
+        const obj = JSON.parse(raw);
+        if(!obj || typeof obj !== "object") return false;
+        state = obj;
+        // defaults
+        state.settings = Object.assign({
+          title: "Horse Runrun Team Mode",
+          finishLine: 100,
+          stepMin: 4,
+          stepMax: 12,
+          autoRank: true
+        }, state.settings || {});
+        state.teams = (state.teams || []).map(t => ({
+          id: t.id || uid(),
+          name: t.name || "Team",
+          emoji: t.emoji || "🐴",
+          color: t.color || "aqua",
+          members: Array.isArray(t.members) ? t.members : [],
+          distance: Number.isFinite(t.distance) ? t.distance : 0,
+          finishedAtStep: (t.finishedAtStep == null ? null : t.finishedAtStep)
+        }));
+        state.stepCount = Number.isFinite(state.stepCount) ? state.stepCount : 0;
+        state.phase = state.phase || "idle";
+        state.startedAt = state.startedAt || null;
+        return true;
+      }catch(e){
+        return false;
+      }
+    }
+
+    // --- Render all
+    function renderAll(){
+      syncInputsFromState();
+      renderTeamsList();
+      renderTracks();
+      elStatusInfo.textContent = `${state.teams.length} teams · step ${state.stepCount}`;
+      elStageTitle.textContent = state.settings.title || "Race Arena";
+      elFinishLabel.textContent = String(state.settings.finishLine);
+    }
+
+    // --- Event wiring
+    elBtnAddTeam.addEventListener("click", () => {
+      const editingId = elBtnAddTeam.dataset.editing;
+      if(editingId){
+        saveEditedTeam(editingId);
+      }else{
+        addTeamFromForm();
+      }
+    });
+
+    elBtnClearTeams.addEventListener("click", () => {
+      if(confirm("Clear all teams?")) clearAllTeams();
+    });
+
+    elBtnStart.addEventListener("click", () => {
+      if(state.teams.length === 0){
+        alert("Please add at least one team.");
+        return;
+      }
+      startRace();
+    });
+
+    elBtnAdvance.addEventListener("click", () => {
+      if(state.phase !== "racing"){
+        alert("Start the race first.");
+        return;
+      }
+      advanceStep();
+    });
+
+    elBtnFinish.addEventListener("click", () => {
+      if(state.phase === "idle"){
+        alert("Start the race first.");
+        return;
+      }
+      finishRace("Force-finished by host.");
+    });
+
+    elBtnExport.addEventListener("click", exportState);
+    elBtnImport.addEventListener("click", importState);
+
+    elBtnCloseOverlay.addEventListener("click", hideResults);
+    elOverlay.addEventListener("click", (e) => {
+      if(e.target === elOverlay) hideResults();
+    });
+
+    // input changes
+    elTitle.addEventListener("input", () => {
+      state.settings.title = (elTitle.value || "").trim();
+      elStageTitle.textContent = state.settings.title || "Race Arena";
+      saveLocal();
+    });
+    elFinish.addEventListener("input", () => {
+      applySettingsFromInputs();
+      renderTracks();
+      saveLocal();
+    });
+    elStepMin.addEventListener("input", () => { applySettingsFromInputs(); saveLocal(); });
+    elStepMax.addEventListener("input", () => { applySettingsFromInputs(); saveLocal(); });
+
+    elAutoRank.addEventListener("click", () => {
+      state.settings.autoRank = !state.settings.autoRank;
+      elAutoRank.classList.toggle("on", state.settings.autoRank);
+      elAutoRank.setAttribute("aria-checked", state.settings.autoRank);
+      renderTracks();
+      saveLocal();
+    });
+
+    // window resize -> reposition horses
+    window.addEventListener("resize", () => {
+      // re-render tracks for positions
+      renderTracks();
+    });
+
+    // --- boot
+    (function init(){
+      // pretend "connected" badge
+      $("#connText").textContent = "Local";
+      $("#connDot").classList.add("good");
+
+      const loaded = loadLocal();
+      syncInputsFromState();
+      setPhase(state.phase || "idle");
+      renderAll();
+    })();
+
+  </script>
 </body>
 </html>
