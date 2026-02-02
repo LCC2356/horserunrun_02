@@ -3,1454 +3,3213 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
-  <title>HORSE RUNRUN - Team Mode (Modified)</title>
+  <title>HORSE RUNRUN - TEAM MODE</title>
+  <script src="https://cdn.bootcdn.net/ajax/libs/peerjs/1.4.7/peerjs.min.js"></script>
+  <script src="https://cdn.bootcdn.net/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=VT323&display=swap" rel="stylesheet" />
+
   <style>
-    :root{
-      --bg: #0b0f14;
-      --panel: rgba(255,255,255,0.06);
-      --panel2: rgba(255,255,255,0.10);
-      --border: rgba(255,255,255,0.15);
-      --text: rgba(255,255,255,0.92);
-      --muted: rgba(255,255,255,0.65);
-      --accent: #7cf6ff;
-      --accent2: #ff7cf7;
-      --good: #67ff9b;
-      --warn: #ffd86b;
-      --bad: #ff6b6b;
-      --shadow: 0 14px 40px rgba(0,0,0,.45);
-      --radius: 16px;
-      --radius2: 22px;
+    :root {
+      --bg: #111;
+      --primary: #ffffff;
+      --panel: #222222;
+      --border: #444444;
 
-      --horseSize: 40px;
-      --trackH: 88px;
-      --trackGap: 18px;
+      /* ✅ Track size (host-controlled length) */
+      --game-w: 3400px;
+      --game-h: 100px;
+
+      --accent: #40e0d0;
+
+      /* ✅ Track border controls (host-controlled) */
+      --track-border-on: 1;           /* 1 or 0 */
+      --track-border-w: 2px;          /* px */
     }
 
-    /* basic reset */
-    *{box-sizing:border-box;}
-    html,body{height:100%; margin:0; padding:0; background: radial-gradient(1200px 1200px at 30% 20%, rgba(124,246,255,0.16), transparent 60%),
-                                              radial-gradient(900px 900px at 80% 60%, rgba(255,124,247,0.14), transparent 55%),
-                                              var(--bg);
-              color:var(--text);
-              font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
-              overflow:hidden;
+    * { box-sizing: border-box; user-select: none; -webkit-user-select: none; }
+
+    /* ✅ iOS: prevent long-press callout / text selection popups on mobile controls */
+    html, body, #mobile-view, #m-controller, #m-btn, .push-btn {
+      -webkit-touch-callout: none;
+      -webkit-user-select: none;
+      user-select: none;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-user-drag: none;
+      touch-action: manipulation;
     }
 
-    /* layout */
-    #app{
-      height:100%;
-      display:grid;
-      grid-template-columns: minmax(320px, 420px) 1fr;
-      gap: 18px;
-      padding: 18px;
+    body {
+      margin: 0; padding: 0;
+      background-color: #0a0a0a;
+      font-family: 'VT323', monospace;
+      color: var(--primary);
+      height: 100vh; width: 100vw;
+      overflow: hidden;
+      display: flex; flex-direction: column;
+      position: relative;
     }
 
-    @media (max-width: 980px){
-      #app{
-        grid-template-columns: 1fr;
-        grid-template-rows: auto 1fr;
-        overflow:hidden;
-      }
-    }
+    .hidden { display: none !important; }
 
-    .card{
-      background: var(--panel);
-      border: 1px solid var(--border);
-      border-radius: var(--radius2);
-      box-shadow: var(--shadow);
-      overflow:hidden;
-      backdrop-filter: blur(10px);
-    }
-
-    .cardHeader{
-      padding: 14px 16px 10px;
-      border-bottom: 1px solid rgba(255,255,255,0.08);
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap:12px;
-    }
-    .titleWrap{
-      display:flex;
-      flex-direction:column;
-      gap:4px;
-      min-width:0;
-    }
-    .title{
-      font-weight: 800;
-      letter-spacing: 0.4px;
-      font-size: 15px;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
-    }
-    .subtitle{
-      font-size: 12px;
-      color: var(--muted);
-      line-height: 1.2;
-    }
-
-    .badge{
-      font-size: 11px;
-      padding: 6px 9px;
-      border: 1px solid rgba(255,255,255,0.18);
-      border-radius: 999px;
-      background: rgba(255,255,255,0.06);
-      color: rgba(255,255,255,0.88);
-      display:flex;
-      align-items:center;
-      gap:8px;
-      user-select:none;
-      white-space:nowrap;
-    }
-    .dot{
-      width:8px; height:8px; border-radius:50%;
-      background: var(--warn);
-      box-shadow: 0 0 0 3px rgba(255,216,107,0.18);
-    }
-    .dot.good{background:var(--good); box-shadow: 0 0 0 3px rgba(103,255,155,0.18);}
-    .dot.bad{background:var(--bad); box-shadow: 0 0 0 3px rgba(255,107,107,0.18);}
-
-    /* left: control panel */
-    #panel{
-      display:flex;
-      flex-direction:column;
-      height:100%;
-      min-height: 500px;
-    }
-    #panelBody{
-      padding: 14px 16px 16px;
-      overflow:auto;
-    }
-    .section{
-      padding: 12px;
-      border: 1px solid rgba(255,255,255,0.10);
-      border-radius: var(--radius);
-      background: rgba(255,255,255,0.04);
-      margin-bottom: 12px;
-    }
-    .section h3{
-      margin:0 0 8px 0;
-      font-size: 13px;
-      letter-spacing:0.3px;
-      color: rgba(255,255,255,0.86);
-    }
-    .row{
-      display:grid;
-      grid-template-columns: 1fr 1fr;
-      gap: 10px;
-      margin-top: 10px;
-    }
-    .row3{
-      display:grid;
-      grid-template-columns: 1fr 1fr 1fr;
-      gap: 10px;
-      margin-top: 10px;
-    }
-    .field{
-      display:flex;
-      flex-direction:column;
-      gap: 6px;
-      min-width:0;
-    }
-    label{
-      font-size: 11px;
-      color: var(--muted);
-      letter-spacing: 0.2px;
-    }
-    input[type="text"], input[type="number"], select{
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.14);
-      color: var(--text);
-      border-radius: 12px;
-      padding: 10px 10px;
-      outline:none;
-      font-size: 13px;
-    }
-    input[type="number"]{ padding-right: 6px; }
-    input[type="text"]::placeholder{color: rgba(255,255,255,0.35);}
-    input:focus, select:focus{
-      border-color: rgba(124,246,255,0.55);
-      box-shadow: 0 0 0 4px rgba(124,246,255,0.12);
-    }
-
-    .btnRow{
-      display:flex;
-      gap:10px;
-      flex-wrap:wrap;
-      margin-top: 10px;
-    }
-    button{
-      appearance:none;
-      border:none;
-      outline:none;
-      cursor:pointer;
-      border-radius: 14px;
-      padding: 11px 12px;
-      font-weight: 700;
-      letter-spacing: 0.2px;
-      font-size: 13px;
-      color: rgba(255,255,255,0.92);
-      background: linear-gradient(135deg, rgba(124,246,255,0.35), rgba(255,124,247,0.28));
-      box-shadow: 0 10px 30px rgba(0,0,0,0.25);
-      border: 1px solid rgba(255,255,255,0.16);
-      transition: transform .12s ease, filter .12s ease;
-      user-select:none;
-      flex: 1;
-      min-width: 120px;
-    }
-    button:hover{ transform: translateY(-1px); filter: brightness(1.05);}
-    button:active{ transform: translateY(0px); filter: brightness(0.98);}
-
-    button.secondary{
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.16);
-      box-shadow:none;
-      flex: 0;
-      min-width: 110px;
-    }
-    button.danger{
-      background: rgba(255,107,107,0.16);
-      border: 1px solid rgba(255,107,107,0.30);
-      box-shadow:none;
-    }
-    button.small{
-      padding: 8px 10px;
-      font-size: 12px;
-      border-radius: 12px;
-      min-width: 100px;
-    }
-
-    .hint{
-      font-size: 12px;
-      color: rgba(255,255,255,0.62);
-      line-height: 1.3;
-      margin-top: 8px;
-    }
-
-    .teamList{
-      display:flex;
-      flex-direction:column;
-      gap: 10px;
-      margin-top: 10px;
-    }
-    .teamItem{
-      border: 1px solid rgba(255,255,255,0.10);
-      background: rgba(255,255,255,0.03);
-      border-radius: var(--radius);
-      padding: 10px;
-    }
-    .teamTop{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap: 10px;
-      margin-bottom: 8px;
-    }
-    .teamName{
-      font-weight: 800;
-      font-size: 13px;
-      letter-spacing: 0.2px;
-      min-width:0;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      white-space:nowrap;
-    }
-    .teamMeta{
-      font-size: 11px;
-      color: var(--muted);
-      white-space:nowrap;
-    }
-    .members{
-      display:flex;
-      flex-wrap:wrap;
-      gap: 8px;
-    }
-    .chip{
-      display:flex;
-      align-items:center;
-      gap: 7px;
-      padding: 7px 9px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.06);
-      border: 1px solid rgba(255,255,255,0.12);
-      font-size: 12px;
-    }
-    .chip .miniDot{
-      width: 8px; height: 8px; border-radius: 50%;
-      background: rgba(255,255,255,0.55);
-    }
-
-    /* right: race canvas */
-    #stage{
-      position:relative;
-      height:100%;
-      min-height: 500px;
-      display:flex;
-      flex-direction:column;
-    }
-    #stageBody{
-      flex:1;
-      position:relative;
-      padding: 14px;
-    }
-    .arena{
-      position:absolute;
-      inset: 14px;
-      border-radius: var(--radius2);
-      border: 1px solid rgba(255,255,255,0.12);
-      background: linear-gradient(180deg, rgba(255,255,255,0.05), rgba(255,255,255,0.01));
-      overflow:hidden;
-    }
-
-    /* top status bar inside arena */
-    .arenaHeader{
-      position:absolute;
-      left: 12px;
-      right: 12px;
-      top: 10px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap: 10px;
-      z-index: 3;
-      pointer-events:none;
-    }
-    .arenaHeader .status{
-      pointer-events:auto;
-      padding: 8px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.14);
-      background: rgba(0,0,0,0.25);
-      backdrop-filter: blur(8px);
-      font-size: 12px;
-      display:flex;
-      align-items:center;
-      gap: 10px;
-      color: rgba(255,255,255,0.9);
-      box-shadow: 0 10px 30px rgba(0,0,0,0.22);
-    }
-    .arenaHeader .status strong{
-      font-weight:800;
-      letter-spacing:0.2px;
-    }
-    .arenaHeader .pill{
-      padding: 6px 10px;
-      border-radius: 999px;
-      border: 1px solid rgba(255,255,255,0.14);
-      background: rgba(255,255,255,0.06);
-      font-size: 12px;
-      color: rgba(255,255,255,0.88);
-      pointer-events:auto;
-      user-select:none;
-    }
-    .arenaHeader .pill span{
-      color: rgba(255,255,255,0.65);
-      font-weight:700;
-      margin-right: 6px;
-    }
-
-    .tracks{
-      position:absolute;
-      left: 0;
-      right: 0;
-      top: 52px;
-      bottom: 0;
-      padding: 12px 14px 14px 14px;
-      overflow:auto;
-    }
-
-    .track{
-      position:relative;
-      height: var(--trackH);
-      border-radius: 18px;
-      background: rgba(255,255,255,0.03);
-      border: 1px solid rgba(255,255,255,0.10);
-      margin-bottom: var(--trackGap);
-      overflow:hidden;
-    }
-    .laneLabel{
-      position:absolute;
-      left: 12px;
-      top: 10px;
-      display:flex;
-      flex-direction:column;
-      gap: 2px;
-      z-index:2;
-      pointer-events:none;
-    }
-    .laneLabel .name{
-      font-size: 13px;
-      font-weight: 900;
-      letter-spacing: 0.2px;
-      max-width: 220px;
-      overflow:hidden;
-      text-overflow:ellipsis;
-      white-space:nowrap;
-    }
-    .laneLabel .sub{
-      font-size: 11px;
-      color: rgba(255,255,255,0.62);
-      white-space:nowrap;
-    }
-    .finish{
-      position:absolute;
-      right: 48px;
-      top: 0;
-      bottom: 0;
-      width: 2px;
-      background: repeating-linear-gradient(
-        to bottom,
-        rgba(255,255,255,0.85),
-        rgba(255,255,255,0.85) 8px,
-        rgba(255,255,255,0.15) 8px,
-        rgba(255,255,255,0.15) 16px
-      );
-      opacity: 0.55;
-    }
-
-    .horse{
-      position:absolute;
-      left: 14px;
-      top: 50%;
-      transform: translateY(-50%);
-      width: var(--horseSize);
-      height: var(--horseSize);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      border-radius: 14px;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid rgba(255,255,255,0.16);
-      box-shadow: 0 16px 30px rgba(0,0,0,0.28);
-      font-size: 22px;
-      will-change: transform, left;
-      user-select:none;
-    }
-
-    .horse .emoji{
-      filter: drop-shadow(0 6px 10px rgba(0,0,0,0.35));
-    }
-
-    .progressBar{
-      position:absolute;
-      left: 0;
-      top: 0;
-      bottom: 0;
-      width: 0%;
-      background: linear-gradient(90deg, rgba(124,246,255,0.12), rgba(255,124,247,0.10));
-      pointer-events:none;
-    }
-
-    .trackFooter{
-      position:absolute;
-      left: 12px;
-      right: 12px;
-      bottom: 10px;
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap: 10px;
-      z-index:2;
-      pointer-events:none;
-    }
-    .trackFooter .meter{
-      pointer-events:auto;
-      font-size: 11px;
-      color: rgba(255,255,255,0.68);
-      background: rgba(0,0,0,0.20);
-      border: 1px solid rgba(255,255,255,0.10);
-      border-radius: 999px;
-      padding: 5px 8px;
-      backdrop-filter: blur(8px);
-      box-shadow: 0 10px 20px rgba(0,0,0,0.18);
-      white-space:nowrap;
-    }
-    .trackFooter .meter strong{
-      color: rgba(255,255,255,0.92);
-      font-weight:900;
-    }
-
-    /* overlays */
-    .overlay{
-      position:absolute;
-      inset: 0;
-      background: rgba(0,0,0,0.65);
+    /* ✅ Join page (permanent QR landing) */
+    #join-view{
+      position:absolute; inset:0;
       display:none;
-      align-items:center;
-      justify-content:center;
-      z-index: 50;
-      backdrop-filter: blur(8px);
+      align-items:center; justify-content:center;
+      padding:24px;
+      background:#0a0a0a;
+      z-index:9999;
+    }
+    #join-card{
+      width:min(520px, 92vw);
+      border:1px solid #2a2a2a;
+      border-radius:16px;
+      padding:18px 18px 16px;
+      background:#111;
+      box-shadow:0 10px 30px rgba(0,0,0,.35);
+    }
+    #join-card h2{ margin:0 0 8px; font-size:42px; letter-spacing:.5px; }
+    #join-msg{ margin:0 0 14px; opacity:.9; font-size:22px; line-height:1.25; }
+    #join-sub{ margin:0; opacity:.6; font-size:18px; line-height:1.25; }
+    #join-actions{ margin-top:14px; display:flex; gap:10px; flex-wrap:wrap; }
+    .join-btn{
+      font-family:'VT323', monospace;
+      font-size:22px;
+      padding:10px 14px;
+      border-radius:12px;
+      border:1px solid #3a3a3a;
+      background:#1a1a1a;
+      color:#fff;
+      cursor:pointer;
+    }
+    .join-btn:active{ transform: translateY(1px); }
+
+    #desktop-view {
+      position: absolute; inset: 0;
+      width: 100%; height: 100%;
+      overflow: hidden;
+      background: #000;
+    }
+
+    #game-container {
+      position: absolute;
+      left: 50%; top: 50%;
+      width: 0; height: 0;
+      display: flex; justify-content: center; align-items: center;
+    }
+
+    #game-screen {
+      width: var(--game-w); height: var(--game-h);
+      background: #000; position: relative;
+
+      /* ✅ Border now controlled by CSS variables */
+      border-style: solid;
+      border-color: var(--primary);
+      border-width: calc(var(--track-border-on) * var(--track-border-w));
+      border-right-width: 0;
+
+      box-shadow: none;
+      overflow: hidden;
+      flex-shrink: 0;
+      transition: background-color 0.1s;
+    }
+
+    /* === 红绿灯模式背景样式 === */
+    .bg-green { background: #002200 !important; box-shadow: inset 0 0 50px #00ff00 !important; border-color: #00ff00 !important; }
+    .bg-yellow { background: #332200 !important; box-shadow: inset 0 0 50px #ffb300 !important; border-color: #ffb300 !important; }
+    .bg-red { background: #440000 !important; box-shadow: inset 0 0 100px #ff0000 !important; border-color: #ff0000 !important; }
+
+    /* === 拔河模式专用视觉层 === */
+    #tug-layer {
+      position: absolute; inset: 0; z-index: 1; display: none;
+    }
+    #tug-blue-zone {
+      position: absolute; left: 0; top: 0; bottom: 0;
+      width: 50%;
+      background: #001133;
+      box-shadow: inset 0 0 80px #2979ff;
+      border-right: 6px solid #fff;
+      filter: drop-shadow(0 0 10px #fff);
+      transition: width 0.1s linear;
+      z-index: 2;
+    }
+    #tug-red-zone {
+      position: absolute; right: 0; top: 0; bottom: 0;
+      width: 50%;
+      background: #330000;
+      box-shadow: inset 0 0 80px #ff0000;
+      z-index: 1;
+      transition: width 0.1s linear;
+    }
+
+    .icon-vs {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      font-size: 60px; color: #fff; text-shadow: 0 0 20px #fff, 0 0 40px #ff00ff; z-index: 10;
+      opacity: 1; pointer-events: none; mix-blend-mode: overlay;
+    }
+
+    #track-wrapper {
+      display: flex;
+      width: calc(var(--game-w) + var(--game-h));
+      height: var(--game-h);
+      box-shadow: 0 0 30px rgba(255, 255, 255, 0.3);
+      flex-shrink: 0;
+      position: relative;
+      transform-origin: center center;
+    }
+
+    #side-qr-box {
+      width: var(--game-h);
+      height: var(--game-h);
+      background: #000;
+
+      /* ✅ Border now controlled by CSS variables */
+      border-style: solid;
+      border-color: var(--primary);
+      border-width: calc(var(--track-border-on) * var(--track-border-w));
+
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      position: relative;
+      flex-shrink: 0;
+    }
+
+    .flash-active { animation: track-flash 0.2s ease-out; }
+    @keyframes track-flash {
+      0% { background-color: rgba(255, 255, 255, 0.4); box-shadow: inset 0 0 150px var(--primary); border-color: #fff; }
+      100% { background-color: #000; box-shadow: none; border-color: var(--primary); }
+    }
+
+    .grid-bg {
+      position: absolute; inset: 0; opacity: 0.2;
+      background-image: linear-gradient(rgba(255, 255, 255, 0.3) 1px, transparent 1px),
+                        linear-gradient(90deg, rgba(255, 255, 255, 0.3) 1px, transparent 1px);
+      background-size: 50px 50px;
+      pointer-events: none;
+    }
+
+    /* ✅ Finish line follows track length */
+    .finish-line {
+      position: absolute; top: 0; bottom: 0;
+      left: calc(var(--game-w) - 400px);
+      width: 12px;
+      background-image: linear-gradient(45deg, #fff 25%, transparent 25%, transparent 50%, #fff 50%, #fff 75%, transparent 75%, transparent);
+      background-size: 12px 12px; opacity: 0.8; z-index: 0;
+    }
+
+    .hud { position: absolute; bottom: 4px; right: 10px; font-size: 32px; opacity: 0.5; letter-spacing: 2px; z-index: 110; }
+
+    #track-display-bar {
+      position: absolute;
+      top: 50%; transform: translateY(-50%);
+      left: 0; width: 100%; height: 100px;
+      display: none;
+      align-items: center; justify-content: center;
+      z-index: 100;
+      pointer-events: none;
+    }
+
+    .bar-container { width: 100%; display: flex; align-items: center; justify-content: center; }
+    .bar-text-item {
+      font-size: 80px;
+      letter-spacing: 2px;
+      text-shadow: 0 0 20px currentColor;
+      font-weight: bold;
+      width: 260px;
+      display: flex;
+      justify-content: center;
+      flex-shrink: 0;
+      margin: 0;
+      animation: text-pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275) forwards;
+    }
+    @keyframes text-pop { 0% { transform: scale(0.5); opacity: 0; } 100% { transform: scale(1.0); opacity: 1; } }
+    @keyframes text-vanish { 0% { opacity: 1; } 100% { opacity: 0; } }
+
+    .queue-alert {
+      position: absolute; top: 10px; right: 20px;
+      font-size: 24px; color: #ffb300; text-shadow: 0 0 5px #ffb300;
+      display: none; z-index: 20;
+    }
+
+    #vfd-overlay {
+      position: absolute; inset: 0;
+      display: flex; align-items: center; justify-content: flex-start;
+      overflow: hidden;
+      opacity: 0;
+      pointer-events: none; z-index: 95;
+      padding-left: 0;
+    }
+
+    #vfd-overlay i {
+      display: inline-block;
+      width: 0; height: 0;
+      border-top: 15px solid transparent;
+      border-bottom: 15px solid transparent;
+      border-left: 80px solid var(--primary);
+      margin-right: 20px;
+      flex-shrink: 0;
+      opacity: 0;
+      transform: scale(0.8) skewX(-20deg);
+      filter: drop-shadow(0 0 5px var(--primary));
+    }
+
+    .vfd-active { opacity: 1 !important; }
+    .vfd-active i { animation: vfd-flash 0.4s ease-out forwards calc(var(--d) * 1s); }
+
+    @keyframes vfd-flash {
+      0% { opacity: 0; transform: scale(0.8) translateX(0); }
+      10% { opacity: 1; transform: scale(1.2) translateX(10px); filter: drop-shadow(0 0 15px var(--primary)) drop-shadow(0 0 30px #fff); }
+      40% { opacity: 0.3; transform: scale(1.0) translateX(20px); }
+      100% { opacity: 0; transform: scale(0.8) translateX(30px); }
+    }
+
+    .entity { position: absolute; width: 44px; height: 44px; will-change: transform; }
+    .pixel-grid { display: grid; grid-template-columns: repeat(11, 1fr); width: 100%; height: 100%; transform-origin: bottom center; transition: transform 0.2s; }
+
+    .crown-container {
+      position: absolute; top: -31px; left: 50%; transform: translateX(-50%);
+      width: 18px; height: 18px;
+      animation: bounce 1s infinite; z-index: 10;
+      display: flex; flex-direction: column-reverse; align-items: center;
+    }
+    .aura {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: 160%; height: 160%; border-radius: 50%;
+      background: radial-gradient(circle, rgba(250,204,21,0.4) 0%, transparent 70%);
+      box-shadow: 0 0 10px #facc15; z-index: -1;
+      animation: pulse 0.5s infinite alternate; display: none;
+    }
+    @keyframes pulse { from { opacity: 0.5; transform: translate(-50%, -50%) scale(1); } to { opacity: 1; transform: translate(-50%, -50%) scale(1.1); } }
+
+    .name-tag {
+      position: absolute; top: -18px; left: 50%; transform: translateX(-50%);
+      font-size: 20px; white-space: nowrap; color: #40e0d0; text-shadow: 1px 1px 0 #000;
+    }
+    .grass { position: absolute; width: 6px; height: 6px; background: #69f0ae; box-shadow: 0 0 4px #69f0ae; }
+
+    .obstacle {
+      position: absolute;
+      width: 10px; height: 30px;
+      background: #ffffff;
+      border: 2px solid #ffffff;
+      box-shadow: 0 0 15px #ffffff;
+      z-index: 5;
+      bottom: 5px;
+    }
+
+    .tug-spark {
+      position: absolute; width: 4px; height: 4px; background: #fff;
+      box-shadow: 0 0 10px #fff, 0 0 20px #ff00ff;
+      pointer-events: none; z-index: 20;
+      border-radius: 50%;
+    }
+
+    .shockwave {
+      position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);
+      width: 10px; height: 10px; border-radius: 50%;
+      border: 4px solid rgba(255, 255, 255, 0.8);
+      pointer-events: none; z-index: 5;
+      animation: shock-expand 0.4s ease-out forwards;
+    }
+    @keyframes shock-expand {
+      0% { width: 10px; height: 10px; opacity: 1; border-width: 4px; }
+      100% { width: 100px; height: 100px; opacity: 0; border-width: 0px; }
+    }
+
+    .explosion { position: absolute; width: 6px; height: 6px; background: #ff5252; pointer-events: none; }
+    @keyframes bounce { 0%, 100% { transform: translate(-50%, 0); } 50% { transform: translate(-50%, -4px); } }
+
+    #layer-snow { position: absolute; inset: 0; pointer-events: none; z-index: 1; }
+    .snowflake {
+      position: absolute; top: -10px;
+      background: #ffffff; border-radius: 50%; box-shadow: 0 0 4px #ffffff;
+      animation-name: snowfall; animation-timing-function: linear; animation-fill-mode: forwards;
+    }
+    @keyframes snowfall { to { transform: translateY(calc(var(--game-h) + 20px)); } }
+
+    .trail-segment {
+      position: absolute; height: 4px; width: 50px; border-radius: 0px;
+      pointer-events: none; opacity: 0.8;
+      animation: trail-fade 0.4s ease-out forwards;
+      z-index: 90; mix-blend-mode: screen;
+    }
+    @keyframes trail-fade { to { opacity: 0; transform: translateX(-40px) scaleX(0.5); } }
+
+    .trail-active .p-grid {
+      filter: drop-shadow(-10px 0 5px var(--trail-c)) drop-shadow(-20px 0 10px var(--trail-c)) opacity(0.95);
+      transform: scaleX(1.3) skewX(-15deg);
+      transition: filter 0.1s ease-out, transform 0.1s ease-out;
+    }
+
+    .pixel-emoji-container {
+      position: absolute; top: -20px; left: 50%; transform: translateX(-50%);
+      pointer-events: none; z-index: 200;
+      animation: pixel-float-smooth 2.5s linear forwards;
+    }
+
+    .pop-text {
+      position: absolute; top: -24px; left: 50%; transform: translateX(-50%);
+      color: var(--accent); font-size: 28px; letter-spacing: 2px;
+      text-shadow: 2px 2px 0 #000, -2px -2px 0 #000, 2px -2px 0 #000, -2px 2px 0 #000;
+      white-space: nowrap; pointer-events: none; z-index: 210;
+      font-family: 'VT323', monospace;
+      animation: pixel-float-smooth 2.5s linear forwards;
+    }
+
+    .pixel-icon-base { background: transparent; position: relative; }
+
+    @keyframes pixel-float-smooth {
+      0% { opacity: 0; transform: translate(-50%, 10px) scale(0.5); }
+      10% { opacity: 1; transform: translate(-50%, -10px) scale(1); }
+      25% { transform: translate(calc(-50% + 20px), -40px) scale(1); }
+      50% { transform: translate(calc(-50% - 20px), -80px) scale(1); }
+      75% { transform: translate(calc(-50% + 15px), -120px) scale(1); opacity: 0.8; }
+      100% { transform: translate(-50%, -160px) scale(1); opacity: 0; }
+    }
+
+    .emoji-bar { display: none !important; gap: 15px; margin-top: 40px; pointer-events: auto; z-index: 22001; justify-content: center; }
+    .emoji-btn {
+      background: #222; border: 2px solid #555; color: #fff;
+      width: 60px; height: 60px; border-radius: 12px; cursor: pointer;
+      display: flex; justify-content: center; align-items: center;
+      transition: transform 0.1s; -webkit-tap-highlight-color: transparent;
+      overflow: hidden; font-family: 'VT323', monospace;
+    }
+    .emoji-btn:active { transform: scale(0.8); background: #fff; border-color: #fff; color: #000; }
+    .emoji-btn:active .pixel-icon-base { filter: invert(1); }
+
+    #bottom-controls {
+      position: fixed; bottom: 20px; left: 20px;
+      display: flex; align-items: center; gap: 15px;
+      padding: 15px; background: rgba(0, 0, 0, 0.85);
+      border: 1px solid var(--border); border-radius: 8px; z-index: 1000;
+      box-shadow: 0 0 20px rgba(0,0,0,0.8);
+      flex-wrap: wrap;
+    }
+    #qrcode { background: white; padding: 3px; width: 90px; height: 90px; display: flex; justify-content: center; align-items: center; border-radius: 2px; }
+    #qrcode img { display: block; width: 100%; height: 100%; }
+
+    .control-group {
+      display: flex; flex-direction: column; gap: 5px; border-left: 1px solid #333; padding-left: 15px; width: 140px;
+    }
+    .control-label { font-size: 0.8rem; color: #888; letter-spacing: 1px; }
+    .input-wrapper { display: flex; align-items: center; gap: 8px; width: 100%; }
+
+    input[type=range] { -webkit-appearance: none; width: 100%; background: transparent; margin: 5px 0; }
+    input[type=range]:focus { outline: none; }
+    input[type=range]::-webkit-slider-runnable-track { width: 100%; height: 6px; cursor: pointer; background: #333; border-radius: 3px; border: 1px solid #555; }
+    input[type=range]::-webkit-slider-thumb { height: 16px; width: 16px; border-radius: 2px; background: var(--accent); cursor: pointer; -webkit-appearance: none; margin-top: -6px; box-shadow: 0 0 5px var(--accent); }
+
+    input[type="number"] {
+      background: #222; border: 1px solid var(--border); color: var(--primary);
+      font-family: 'VT323', monospace; font-size: 1.4rem; width: 80px;
+      text-align: center; padding: 2px; border-radius: 4px;
+    }
+    .unit-label { font-size: 1.2rem; color: #555; }
+
+    input[type="checkbox"] { width: 18px; height: 18px; accent-color: var(--accent); }
+
+    select {
+      background: #222; border: 2px solid var(--border); color: white;
+      padding: 8px; font-family: 'VT323', monospace; font-size: 1.2rem;
+      margin-right: 10px; cursor: pointer;
+    }
+
+    .btn {
+      background: #222; border: 2px solid var(--primary); color: var(--primary);
+      padding: 10px 20px; font-family: 'VT323', monospace; font-size: 1.2rem;
+      cursor: pointer; text-transform: uppercase; box-shadow: 0 0 20px rgba(255, 255, 255, 0.2);
+      transition: all 0.2s; margin-left: 5px;
+    }
+    .btn:hover { background: var(--primary); color: #000; }
+    .btn:active { transform: translateY(2px); }
+
+    #modal-editor {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.9); z-index: 9000;
+      display: none; justify-content: center; align-items: center;
+    }
+    .modal-content {
+      background: #1a1c20; border: 2px solid var(--primary); padding: 30px;
+      display: flex; flex-direction: column; align-items: center; gap: 20px;
+    }
+    .editor-grid {
+      display: grid; grid-template-columns: repeat(11, 1fr); grid-template-rows: repeat(11, 1fr);
+      gap: 2px; background: #333; border: 2px solid #555; touch-action: none;
+    }
+    .editor-cell { width: 28px; height: 28px; background: #000; }
+    .color-picker { display: flex; justify-content: center; gap: 15px; flex-wrap: wrap; }
+    .c-dot { width: 40px; height: 40px; border-radius: 50%; border: 2px solid #333; }
+    .c-dot.active { border-color: white; transform: scale(1.1); }
+    .btn-outline { background: transparent; border-color: #ff5252; color: #ff5252; }
+    .btn-flex { flex: 1; display: flex; justify-content: center; align-items: center; }
+
+    #mobile-view {
+      position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+      background: #111; display: flex; flex-direction: column; z-index: 20000;
+      padding: 20px; align-items: center;
+    }
+    .m-header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #333; padding-bottom: 15px; margin-bottom: 20px; flex-shrink: 0; width: 100%; max-width: 400px; }
+    .m-title { font-size: 1.5rem; color: #fff; }
+    .m-status { background: #222; padding: 4px 8px; border-radius: 4px; font-size: 1rem; color: #fff; border: 1px solid #444; }
+    .m-controls { display: flex; flex-direction: column; gap: 15px; margin-bottom: 15px; flex-shrink: 0; width: 100%; max-width: 400px; }
+    input[type="text"] {
+      background: #222; border: 1px solid #444; color: white; padding: 12px;
+      font-family: inherit; text-align: center; font-size: 1.5rem; width: 100%; border-radius: 4px;
+    }
+    .m-canvas-container {
+      flex: 1; display: flex; justify-content: center; align-items: center;
+      background: #1a1a1a; border-radius: 8px; margin-bottom: 20px;
+      overflow: hidden; width: 100%; max-width: 400px;
+    }
+    .m-footer { display: flex; gap: 15px; height: 60px; flex-shrink: 0; width: 100%; max-width: 400px; }
+
+    #m-controller {
+      position: fixed; inset: 0; background: #111; z-index: 22000;
+      display: none; flex-direction: column; align-items: center; justify-content: center;
+    }
+
+    #m-mode-wrapper { margin-bottom: 20px; width: 100%; max-width: 300px; display: none; justify-content: center; }
+    #m-mode-select {
+      background: #222; border: 2px solid #555; color: #fff; padding: 10px;
+      font-family: 'VT323'; font-size: 1.8rem; width: 100%; text-align: center;
+      border-radius: 8px;
+    }
+
+    .push-btn {
+      width: 250px; height: 250px;
+      border-radius: 50%;
+      background: #222; border: 8px solid #444;
+      color: #888; font-size: 4rem; font-family: 'VT323', monospace;
+      display: flex; justify-content: center; align-items: center;
+      box-shadow: 0 0 50px rgba(0,0,0, 0.4);
+      transition: all 0.1s; user-select: none;
+      cursor: pointer; -webkit-tap-highlight-color: transparent;
+      touch-action: none;
+      text-align: center; line-height: 1; padding: 20px;
+    }
+    .push-btn:active { transform: scale(0.95); }
+    .controller-info { font-size: 1.5rem; color: #888; margin-bottom: 30px; text-align: center; }
+    .btn-wait { background: #1a1a1a !important; border-color: #333 !important; color: #555 !important; }
+    .btn-mash { background: #fff !important; border-color: #ccc !important; color: #000 !important; box-shadow: 0 0 60px rgba(255, 255, 255, 0.6) !important; }
+    .btn-start { background: #ffffff !important; border: 8px solid #ccc !important; color: #000000 !important; box-shadow: 0 0 60px rgba(255, 255, 255, 0.6) !important; }
+    .btn-dead { background: #ffffff !important; border: 8px solid #000000 !important; color: #000000 !important; box-shadow: 0 0 30px rgba(255, 255, 255, 0.5) !important; font-size: 3rem !important; }
+
+    .btn-team-red {
+      background: #ff0000 !important;
+      border-color: #ff5252 !important;
+      color: #fff !important;
+      box-shadow: 0 0 30px rgba(255, 0, 0, 0.6) !important;
+      text-shadow: 0 0 10px #fff !important;
+    }
+    .btn-team-blue {
+      background: #0044ff !important;
+      border-color: #40e0d0 !important;
+      color: #fff !important;
+      box-shadow: 0 0 30px rgba(0, 100, 255, 0.6) !important;
+      text-shadow: 0 0 10px #fff !important;
+    }
+
+    /* ✅ 手机端隐藏控制面板 */
+    #m-admin {
+      position: fixed; inset: 0;
+      background: rgba(0,0,0,0.92);
+      z-index: 25000;
+      display: none;
+      align-items: center;
+      justify-content: center;
       padding: 20px;
     }
-    .overlay.show{display:flex;}
-    .modal{
-      width: min(720px, 94vw);
-      max-height: 86vh;
-      overflow:auto;
-      border-radius: var(--radius2);
-      background: rgba(20,24,32,0.88);
-      border: 1px solid rgba(255,255,255,0.14);
-      box-shadow: 0 22px 60px rgba(0,0,0,0.50);
-      padding: 16px;
+    .m-admin-card{
+      width: 100%;
+      max-width: 420px;
+      background: #141414;
+      border: 2px solid #fff;
+      border-radius: 10px;
+      padding: 18px;
+      box-shadow: 0 0 40px rgba(255,255,255,0.12);
     }
-    .modal h2{
-      margin: 0 0 6px 0;
-      font-size: 18px;
-      letter-spacing:0.3px;
+    .m-admin-title{
+      font-size: 1.8rem;
+      margin-bottom: 10px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
     }
-    .modal p{
-      margin: 0 0 12px 0;
-      color: rgba(255,255,255,0.72);
-      line-height: 1.35;
-      font-size: 13px;
+    .m-admin-hint{
+      font-size: 1rem;
+      color: #888;
+      margin-bottom: 14px;
     }
-    .table{
-      width:100%;
-      border-collapse: collapse;
-      overflow:hidden;
-      border-radius: 14px;
-      border: 1px solid rgba(255,255,255,0.12);
+    .m-admin-row{
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 10px 0;
+      border-top: 1px solid #2b2b2b;
     }
-    .table th, .table td{
-      padding: 10px;
-      font-size: 13px;
-      border-bottom: 1px solid rgba(255,255,255,0.10);
-      text-align:left;
+    .m-admin-row:first-of-type{ border-top: none; }
+    .m-admin-label{
+      font-size: 1.2rem;
+      color: #ddd;
+      letter-spacing: 0.5px;
+      min-width: 90px;
     }
-    .table th{
-      font-size: 12px;
-      color: rgba(255,255,255,0.72);
-      font-weight:800;
-      background: rgba(255,255,255,0.05);
-    }
-    .table tr:last-child td{border-bottom:none;}
-    .modalActions{
-      margin-top: 12px;
-      display:flex;
-      justify-content:flex-end;
+    .m-admin-control{
+      display: flex;
+      align-items: center;
       gap: 10px;
+      width: 100%;
+      justify-content: flex-end;
     }
-
-    /* tiny scrollbars */
-    ::-webkit-scrollbar{height:10px;width:10px}
-    ::-webkit-scrollbar-thumb{background: rgba(255,255,255,0.10); border-radius:999px}
-    ::-webkit-scrollbar-track{background: rgba(0,0,0,0.10)}
-
-    /* helpers */
-    .mono{font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;}
-    .sep{height:1px;background: rgba(255,255,255,0.10); margin: 10px 0;}
-
-    .toggleRow{
-      display:flex;
-      align-items:center;
-      justify-content:space-between;
-      gap: 10px;
-      margin-top: 8px;
-      padding: 10px;
-      border-radius: 14px;
-      border: 1px solid rgba(255,255,255,0.10);
-      background: rgba(255,255,255,0.03);
+    .m-admin-control input[type="number"]{
+      width: 140px;
+      font-size: 1.4rem;
+      padding: 6px 8px;
+      border-radius: 6px;
     }
-    .toggleRow .left{
-      display:flex;
-      flex-direction:column;
-      gap:2px;
-      min-width:0;
+    .m-admin-control select{
+      width: 200px;
+      font-size: 1.3rem;
+      margin-right: 0;
+      border-radius: 6px;
     }
-    .toggleRow .left .t{
-      font-size: 13px;
-      font-weight: 800;
-      letter-spacing:0.2px;
-      white-space:nowrap;
-      overflow:hidden;
-      text-overflow:ellipsis;
+    .m-admin-actions{
+      display: flex;
+      gap: 12px;
+      margin-top: 14px;
     }
-    .toggleRow .left .d{
-      font-size: 12px;
-      color: rgba(255,255,255,0.62);
-      line-height: 1.2;
+    .m-btn-small{
+      flex: 1;
+      padding: 12px 10px;
+      font-size: 1.2rem;
+      border-radius: 8px;
+      border: 2px solid #fff;
+      background: #222;
+      color: #fff;
+      font-family: 'VT323', monospace;
+      text-transform: uppercase;
     }
-
-    /* switch */
-    .switch{
-      position:relative;
-      width: 44px;
-      height: 26px;
-      background: rgba(255,255,255,0.14);
-      border: 1px solid rgba(255,255,255,0.18);
-      border-radius: 999px;
-      cursor:pointer;
-      flex: 0 0 auto;
-      box-shadow: inset 0 0 0 2px rgba(0,0,0,0.08);
-    }
-    .switch::after{
-      content:"";
-      position:absolute;
-      top: 3px;
-      left: 3px;
-      width: 20px;
-      height: 20px;
-      border-radius: 999px;
-      background: rgba(255,255,255,0.90);
-      transition: transform .18s ease;
-      box-shadow: 0 8px 18px rgba(0,0,0,0.25);
-    }
-    .switch.on{
-      background: rgba(103,255,155,0.22);
-      border-color: rgba(103,255,155,0.35);
-    }
-    .switch.on::after{ transform: translateX(18px); }
-
-    /* mobile friendly button sizing */
-    @media (max-width: 560px){
-      button{ min-width: 100px; }
-      .row{ grid-template-columns: 1fr; }
-      .row3{ grid-template-columns: 1fr; }
-      #app{ padding: 12px; gap: 12px; }
-      .arena{ inset: 12px; }
-      .tracks{ padding: 10px; }
-    }
+    .m-btn-small:active{ transform: scale(0.98); }
+    .m-btn-small.primary{ background: #fff; color:#000; }
+    .m-btn-small.danger{ border-color:#ff5252; color:#ff5252; }
   </style>
 </head>
+
 <body>
-  <div id="app">
-    <!-- LEFT: CONTROL PANEL -->
-    <div id="panel" class="card">
-      <div class="cardHeader">
-        <div class="titleWrap">
-          <div class="title">HORSE RUNRUN · Team Mode</div>
-          <div class="subtitle">Create teams & start a race. Tap “Advance” to move. Finish line at 100.</div>
-        </div>
-        <div class="badge" id="connBadge"><span class="dot" id="connDot"></span><span id="connText">Local</span></div>
-      </div>
+  <div id="desktop-view">
+    <div id="game-container">
+      <div id="track-wrapper">
+        <div id="game-screen">
+          <div class="grid-bg"></div>
 
-      <div id="panelBody">
-        <div class="section">
-          <h3>Game Setup</h3>
-          <div class="row">
-            <div class="field">
-              <label for="gameTitle">Room / Title</label>
-              <input id="gameTitle" type="text" placeholder="e.g., Horse Runrun Night" value="Horse Runrun Team Mode"/>
+          <div id="tug-layer">
+            <div id="tug-red-zone"></div>
+            <div id="tug-blue-zone">
+              <span class="tug-icon" style="right: 10px; color: #fff;">&#9664;</span>
             </div>
-            <div class="field">
-              <label for="finishLine">Finish Line</label>
-              <input id="finishLine" type="number" min="10" max="500" value="100"/>
-            </div>
+            <div class="icon-vs">VS</div>
           </div>
 
-          <div class="row">
-            <div class="field">
-              <label for="stepMin">Step Min</label>
-              <input id="stepMin" type="number" min="1" max="99" value="4"/>
-            </div>
-            <div class="field">
-              <label for="stepMax">Step Max</label>
-              <input id="stepMax" type="number" min="1" max="200" value="12"/>
-            </div>
+          <div class="finish-line"></div>
+
+          <div id="hud" class="hud">NOWHERE TO RUN</div>
+
+          <div id="track-display-bar">
+            <div class="bar-container" id="bar-text"></div>
           </div>
 
-          <div class="toggleRow">
-            <div class="left">
-              <div class="t">Auto-Rank Updates</div>
-              <div class="d">Sort tracks by current progress while racing</div>
-            </div>
-            <div class="switch on" id="toggleAutoRank" role="switch" aria-checked="true"></div>
-          </div>
-
-          <div class="btnRow">
-            <button id="btnStart">Start / Restart</button>
-            <button id="btnAdvance" class="secondary">Advance</button>
-            <button id="btnFinish" class="secondary">Finish Now</button>
-          </div>
-          <div class="hint">Tip: “Advance” will move each team forward by a random step between Step Min & Step Max. “Finish Now” ends immediately and shows results.</div>
+          <div id="queue-text" class="queue-alert"></div>
+          <div id="vfd-overlay"></div>
+          <div id="layer-snow"></div>
+          <div id="layer-grass"></div>
+          <div id="layer-pony"></div>
+          <div id="layer-fx"></div>
         </div>
 
-        <div class="section">
-          <h3>Teams</h3>
-          <div class="row">
-            <div class="field">
-              <label for="teamName">Team name</label>
-              <input id="teamName" type="text" placeholder="e.g., Blue Rockets"/>
-            </div>
-            <div class="field">
-              <label for="teamEmoji">Emoji</label>
-              <input id="teamEmoji" type="text" placeholder="🐴" value="🐴"/>
-            </div>
-          </div>
-
-          <div class="row">
-            <div class="field">
-              <label for="teamMembers">Members (comma-separated)</label>
-              <input id="teamMembers" type="text" placeholder="e.g., A, B, C"/>
-            </div>
-            <div class="field">
-              <label for="teamColor">Lane style</label>
-              <select id="teamColor">
-                <option value="aqua">Aqua</option>
-                <option value="pink">Pink</option>
-                <option value="lime">Lime</option>
-                <option value="amber">Amber</option>
-                <option value="violet">Violet</option>
-                <option value="gray">Gray</option>
-              </select>
-            </div>
-          </div>
-
-          <div class="btnRow">
-            <button id="btnAddTeam" class="secondary">Add Team</button>
-            <button id="btnClearTeams" class="danger secondary">Clear All</button>
-          </div>
-
-          <div class="teamList" id="teamList"></div>
-        </div>
-
-        <div class="section">
-          <h3>Export / Import</h3>
-          <div class="row">
-            <div class="field">
-              <label for="exportBox">State (JSON)</label>
-              <input id="exportBox" type="text" placeholder="Click Export to copy current state"/>
-            </div>
-            <div class="field">
-              <label>&nbsp;</label>
-              <div class="btnRow" style="margin-top:0;">
-                <button id="btnExport" class="secondary small">Export</button>
-                <button id="btnImport" class="secondary small">Import</button>
-              </div>
-            </div>
-          </div>
-          <div class="hint">Export gives a JSON snapshot you can paste elsewhere. Import will replace teams + settings.</div>
-        </div>
-
-        <div class="section">
-          <h3>Notes</h3>
-          <div class="hint">
-            - This is a local-only, single-device version. <br/>
-            - If you want multi-device sync (host + audience), tell me your desired flow and I can wire WebRTC or WebSocket.
-          </div>
-        </div>
+        <div id="side-qr-box">
+          <div id="qrcode"></div>
+</div>
       </div>
     </div>
 
-    <!-- RIGHT: STAGE -->
-    <div id="stage" class="card">
-      <div class="cardHeader">
-        <div class="titleWrap">
-          <div class="title" id="stageTitle">Race Arena</div>
-          <div class="subtitle" id="stageSubtitle">Add teams on the left, then start.</div>
+    <div id="bottom-controls">
+      <div class="control-group" style="border-left: none;">
+        <span class="control-label">ZOOM</span>
+        <input type="range" id="zoom-slider" min="1" max="500" step="0.1" value="100" />
+        <div class="input-wrapper">
+          <input type="number" id="zoom-input" value="100" min="1" max="500" step="0.1" inputmode="decimal" />
+          <span class="unit-label">%</span>
         </div>
-        <div class="badge"><span class="dot good" id="raceDot"></span><span id="raceText">Ready</span></div>
       </div>
 
-      <div id="stageBody">
-        <div class="arena" id="arena">
-          <div class="arenaHeader">
-            <div class="status" id="statusLeft">
-              <strong id="statusPhase">Idle</strong>
-              <span id="statusInfo" class="mono" style="color: rgba(255,255,255,0.75);">0 teams</span>
-            </div>
-            <div class="pill" id="statusRight"><span>Finish:</span><strong id="finishLabel">100</strong></div>
-          </div>
-
-          <div class="tracks" id="tracks"></div>
+      <!-- ✅ NEW: HORIZONTAL STRETCH -->
+      <div class="control-group">
+        <span class="control-label">STRETCH X</span>
+        <input type="range" id="stretch-slider" min="50" max="200" step="0.1" value="100" />
+        <div class="input-wrapper">
+          <input type="number" id="stretch-input" value="100" min="50" max="200" step="0.1" inputmode="decimal" />
+          <span class="unit-label">%</span>
         </div>
+      </div>
 
-        <!-- RESULTS OVERLAY -->
-        <div class="overlay" id="overlay">
-          <div class="modal">
-            <h2>Results</h2>
-            <p id="resultsSub">—</p>
-            <table class="table" id="resultsTable">
-              <thead>
-                <tr>
-                  <th style="width:60px;">Rank</th>
-                  <th>Team</th>
-                  <th style="width:120px;">Distance</th>
-                  <th>Members</th>
-                </tr>
-              </thead>
-              <tbody></tbody>
-            </table>
-
-            <div class="modalActions">
-              <button id="btnCloseOverlay" class="secondary">Close</button>
-            </div>
-          </div>
+      <!-- ✅ NEW: X OFFSET (left/right pan) -->
+      <div class="control-group">
+        <span class="control-label">X OFFSET</span>
+        <input type="range" id="x-slider" min="-3000" max="3000" step="1" value="0" />
+        <div class="input-wrapper">
+          <input type="number" id="x-input" value="0" step="0.1" inputmode="decimal" />
+          <span class="unit-label">PX</span>
         </div>
+      </div>
 
+      <div class="control-group">
+        <span class="control-label">Y OFFSET</span>
+        <input type="range" id="y-slider" min="-1200" max="1200" step="1" value="0" />
+        <div class="input-wrapper">
+          <input type="number" id="y-input" value="0" step="0.1" inputmode="decimal" />
+          <span class="unit-label">PX</span>
+        </div>
+      </div>
+
+      <!-- ✅ NEW: TRACK LENGTH (px) -->
+      <div class="control-group">
+        <span class="control-label">LENGTH</span>
+        <div class="input-wrapper">
+          <input type="number" id="len-input" value="3400" min="800" max="12000" step="10" inputmode="numeric" />
+          <span class="unit-label">PX</span>
+        </div>
+      </div>
+
+      <!-- ✅ NEW: TUG AUTO CENTER -->
+      <div class="control-group">
+        <span class="control-label">TUG CENTER</span>
+        <div class="input-wrapper">
+          <input type="checkbox" id="tug-center-toggle" />
+          <span class="unit-label" id="tug-center-label">OFF</span>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <span class="control-label">GAME MODE</span>
+        <select id="mode-select">
+          <option value="RANDOM">RANDOM</option>
+          <option value="CLASSIC">RUN</option>
+          <option value="HURDLE">JUMP</option>
+          <option value="RED_LIGHT">STOP?</option>
+          <option value="TUG">TEAM</option>
+        </select>
+      </div>
+
+      <div class="control-group">
+        <span class="control-label">SNOW</span>
+        <div class="input-wrapper">
+          <input type="checkbox" id="snow-toggle" checked />
+          <span class="unit-label" id="snow-toggle-label">ON</span>
+        </div>
+      </div>
+
+      <div class="control-group">
+        <span class="control-label">BORDER</span>
+        <div class="input-wrapper">
+          <input type="checkbox" id="border-toggle" checked />
+          <span class="unit-label" id="border-toggle-label">ON</span>
+        </div>
+        <div class="input-wrapper">
+          <input type="number" id="border-width-input" value="2" min="0" max="20" step="0.5" inputmode="decimal" />
+          <span class="unit-label">PX</span>
+        </div>
+      </div>
+
+      <button class="btn" onclick="spawnTestPony()">+ BOT</button>
+      <button class="btn" onclick="openDesktopEditor()">+ PONY</button>
+    </div>
+  </div>
+
+  <div id="modal-editor" class="hidden">
+    <div class="modal-content">
+      <h2 class="vfd-glow" style="margin: 0;">DESIGN RUNNER</h2>
+      <input
+        type="text"
+        id="pc-name"
+        placeholder="ENTER NAME"
+        maxlength="8"
+        value="PLAYER"
+        style="background:#222; border:1px solid #444; color:white; padding:10px; text-align:center; font-size:1.5rem; border-radius:4px;"
+      />
+      <div class="color-picker" id="pc-colors"></div>
+      <div id="pc-grid" class="editor-grid"></div>
+      <div style="display: flex; gap: 20px; width: 100%;">
+        <button class="btn btn-outline btn-flex" onclick="document.getElementById('modal-editor').style.display='none'">CANCEL</button>
+        <button class="btn btn-outline btn-flex" style="border-color:#ffb300; color:#ffb300;" onclick="clearDesktop()">CLEAR</button>
+        <button class="btn btn-flex" onclick="savePCPony()">SPAWN</button>
       </div>
     </div>
   </div>
 
+  <div id="mobile-view" style="display: none;">
+    <div id="m-editor-ui">
+      <div class="m-header">
+        <span class="m-title" id="m-title">NOWHERE TO RUN</span>
+        <span id="m-status" class="m-status">Wait...</span>
+      </div>
+      <div class="m-controls">
+        <input type="text" id="m-name" placeholder="ENTER NAME" maxlength="8" />
+        <div class="color-picker" id="m-colors"></div>
+      </div>
+      <div class="m-canvas-container">
+        <div id="m-grid" class="editor-grid"></div>
+      </div>
+      <div class="m-footer">
+        <button class="btn btn-outline btn-flex" onclick="clearMobile()">CLEAR CANVAS</button>
+        <button class="btn btn-flex" onclick="sendMobile()">RUN</button>
+      </div>
+    </div>
+
+    <!-- ✅ 手机端隐藏控制面板（五次点击标题进入） -->
+    <div id="m-admin">
+      <div class="m-admin-card">
+        <div class="m-admin-title">
+          <span>HOST CONTROL</span>
+          <span style="font-size:1rem; color:#888;">(hidden)</span>
+        </div>
+        <div class="m-admin-hint">Zoom / Stretch / X / Y supports decimals. Length changes track size (height fixed).</div>
+
+        <div class="m-admin-row">
+          <div class="m-admin-label">ZOOM</div>
+          <div class="m-admin-control">
+            <input type="number" id="m-admin-zoom" min="1" max="500" step="0.1" value="100" inputmode="decimal" />
+            <span class="unit-label">%</span>
+          </div>
+        </div>
+
+        <!-- ✅ NEW: STRETCH X -->
+        <div class="m-admin-row">
+          <div class="m-admin-label">STRETCH</div>
+          <div class="m-admin-control">
+            <input type="number" id="m-admin-stretch" min="50" max="200" step="0.1" value="100" inputmode="decimal" />
+            <span class="unit-label">%</span>
+          </div>
+        </div>
+
+        <!-- ✅ NEW: X OFFSET -->
+        <div class="m-admin-row">
+          <div class="m-admin-label">X OFFSET</div>
+          <div class="m-admin-control">
+            <input type="number" id="m-admin-x" min="-3000" max="3000" step="0.1" value="0" inputmode="decimal" />
+            <span class="unit-label">PX</span>
+          </div>
+        </div>
+
+        <div class="m-admin-row">
+          <div class="m-admin-label">Y OFFSET</div>
+          <div class="m-admin-control">
+            <input type="number" id="m-admin-y" min="-1200" max="1200" step="0.1" value="0" inputmode="decimal" />
+            <span class="unit-label">PX</span>
+          </div>
+        </div>
+
+        <!-- ✅ NEW: TRACK LENGTH -->
+        <div class="m-admin-row">
+          <div class="m-admin-label">LENGTH</div>
+          <div class="m-admin-control">
+            <input type="number" id="m-admin-len" min="800" max="12000" step="10" value="3400" inputmode="numeric" />
+            <span class="unit-label">PX</span>
+          </div>
+        </div>
+
+        <!-- ✅ NEW: TUG AUTO CENTER -->
+        <div class="m-admin-row">
+          <div class="m-admin-label">TUG CENTER</div>
+          <div class="m-admin-control" style="justify-content:flex-end;">
+            <input type="checkbox" id="m-admin-tugcenter" />
+            <span class="unit-label" id="m-admin-tugcenter-label">OFF</span>
+          </div>
+        </div>
+
+        <div class="m-admin-row">
+          <div class="m-admin-label">MODE</div>
+          <div class="m-admin-control">
+            <select id="m-admin-mode">
+              <option value="RANDOM">RANDOM</option>
+              <option value="CLASSIC">RUN</option>
+              <option value="HURDLE">JUMP</option>
+              <option value="RED_LIGHT">STOP?</option>
+              <option value="TUG">TEAM</option>
+            </select>
+          </div>
+        </div>
+
+        <div class="m-admin-row">
+          <div class="m-admin-label">SNOW</div>
+          <div class="m-admin-control" style="justify-content:flex-end;">
+            <input type="checkbox" id="m-admin-snow" checked />
+            <span class="unit-label" id="m-admin-snow-label">ON</span>
+          </div>
+        </div>
+
+        <div class="m-admin-row">
+          <div class="m-admin-label">BORDER</div>
+          <div class="m-admin-control" style="justify-content:flex-end;">
+            <input type="checkbox" id="m-admin-border" checked />
+            <span class="unit-label" id="m-admin-border-label">ON</span>
+          </div>
+        </div>
+
+        <div class="m-admin-row">
+          <div class="m-admin-label">B WIDTH</div>
+          <div class="m-admin-control">
+            <input type="number" id="m-admin-borderw" min="0" max="20" step="0.5" value="2" inputmode="decimal" />
+            <span class="unit-label">PX</span>
+          </div>
+        </div>
+
+        <div class="m-admin-actions">
+          <button class="m-btn-small primary" id="m-admin-apply">APPLY</button>
+          <button class="m-btn-small" id="m-admin-addbot">+ BOT</button>
+          <button class="m-btn-small danger" id="m-admin-back">BACK</button>
+        </div>
+      </div>
+    </div>
+
+    <div id="m-controller">
+      <div id="m-info" class="controller-info">GET READY</div>
+
+      <div id="m-mode-wrapper">
+        <select id="m-mode-select">
+          <option value="RANDOM">RANDOM</option>
+          <option value="CLASSIC">RUN</option>
+          <option value="HURDLE">JUMP</option>
+          <option value="RED_LIGHT">STOP?</option>
+          <option value="TUG">TEAM</option>
+        </select>
+      </div>
+
+      <div id="m-btn" class="push-btn btn-wait">WAIT</div>
+
+      <div class="emoji-bar">
+        <div class="emoji-btn" onclick="sendEmoji('HEART')" data-icon="HEART"></div>
+        <div class="emoji-btn" onclick="sendEmoji('POOP')" data-icon="POOP"></div>
+        <div class="emoji-btn" onclick="sendEmoji('BOLT')" data-icon="BOLT"></div>
+        <div class="emoji-btn" onclick="sendEmoji('FACE')" style="font-size: 2rem;">?</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ✅ Permanent QR landing: /join -->
+  <div id="join-view">
+    <div id="join-card">
+      <h2>Joining…</h2>
+      <p id="join-msg">Finding the current host…</p>
+      <p id="join-sub">If you’re the host, open the main page first to go online.</p>
+      <div id="join-actions">
+        <button id="join-retry" class="join-btn" style="display:none;">Retry</button>
+        <button id="join-open-main" class="join-btn">Open main page</button>
+      </div>
+    </div>
+  </div>
+
+
   <script>
-    /*****************************************************************
-     * HORSE RUNRUN TEAM MODE (Modified)
-     * Local single-device. Add teams, start/restart, advance, finish.
-     *****************************************************************/
+    // ✅ Track height fixed; length is host-controlled
+    let gameW = 3400;
+    const GAME_H = 100;
 
-    // --- DOM helpers
-    const $ = (sel, root=document) => root.querySelector(sel);
-    const $$ = (sel, root=document) => Array.from(root.querySelectorAll(sel));
-    const clamp = (n, a, b) => Math.max(a, Math.min(b, n));
-    const randInt = (a, b) => Math.floor(Math.random() * (b - a + 1)) + a;
+    const PONY_SIZE = 50;
 
-    // --- State
-    let state = {
-      settings: {
-        title: "Horse Runrun Team Mode",
-        finishLine: 100,
-        stepMin: 4,
-        stepMax: 12,
-        autoRank: true
-      },
-      phase: "idle", // idle | racing | finished
-      teams: [
-        // { id, name, emoji, color, members:[...], distance, finishedAtStep }
-      ],
-      stepCount: 0,
-      startedAt: null
+    function getFinishX() {
+      return Math.max(200, gameW - 400);
+    }
+
+    const COLORS = { CYAN:'#40e0d0', YELLOW:'#ffb300', RED:'#ff5252', GREEN:'#69f0ae', PURPLE:'#e040fb', WHITE:'#ffffff', BLUE:'#2979ff' };
+
+    const DEFAULT_PIXELS = [
+      [0,0,0,0,0,0,0,0,0,0,0], [0,0,0,0,0,0,0,0,1,0,0], [0,0,0,0,0,0,0,1,1,1,0], [0,0,0,0,0,0,0,1,1,1,1], [0,1,0,0,0,0,1,1,1,0,0],
+      [1,0,1,1,1,1,1,1,1,0,0], [1,0,1,1,1,1,1,1,1,0,0], [0,0,1,1,1,1,1,1,1,0,0], [0,0,1,0,1,0,1,0,1,0,0], [0,0,1,0,1,0,1,0,1,0,0], [0,0,1,0,1,0,1,0,1,0,0]
+    ];
+
+    const PIXEL_ART_MAPS = {
+      'HEART': [ [0,1,1,0,1,1,0], [1,1,1,1,1,1,1], [1,1,1,1,1,1,1], [0,1,1,1,1,1,0], [0,0,1,1,1,0,0], [0,0,0,1,0,0,0] ],
+      'POOP': [ [0,0,0,1,0,0,0], [0,0,1,1,1,0,0], [0,1,1,1,1,1,0], [1,0,1,1,1,0,1], [1,1,1,1,1,1,1] ],
+      'BOLT': [ [0,0,1,1,1,0], [0,1,1,1,0,0], [1,1,1,1,1,0], [0,0,0,1,1,0], [0,0,1,1,0,0], [0,0,1,0,0,0] ]
     };
 
-    const COLOR_THEMES = {
-      aqua:  { bar: "rgba(124,246,255,0.14)", glow: "rgba(124,246,255,0.18)", horseBg:"rgba(124,246,255,0.10)" },
-      pink:  { bar: "rgba(255,124,247,0.14)", glow: "rgba(255,124,247,0.18)", horseBg:"rgba(255,124,247,0.10)" },
-      lime:  { bar: "rgba(103,255,155,0.14)", glow: "rgba(103,255,155,0.18)", horseBg:"rgba(103,255,155,0.10)" },
-      amber: { bar: "rgba(255,216,107,0.14)", glow: "rgba(255,216,107,0.18)", horseBg:"rgba(255,216,107,0.10)" },
-      violet:{ bar: "rgba(180,124,255,0.14)", glow: "rgba(180,124,255,0.18)", horseBg:"rgba(180,124,255,0.10)" },
-      gray:  { bar: "rgba(255,255,255,0.10)", glow: "rgba(255,255,255,0.12)", horseBg:"rgba(255,255,255,0.06)" }
+    const SONGS = {
+      'JINGLE': [ 329.6, 329.6, 329.6, 329.6, 329.6, 329.6, 329.6, 392.0, 261.6, 293.7, 329.6, 349.2, 349.2, 349.2, 349.2, 349.2, 329.6, 329.6, 329.6, 293.7, 293.7, 329.6, 293.7, 392.0 ],
+      'MERRY': [ 261.6, 349.2, 349.2, 392.0, 349.2, 329.6, 293.7, 293.7, 293.7, 392.0, 392.0, 440.0, 392.0, 349.2, 329.6, 261.6, 261.6, 440.0, 440.0, 466.2, 440.0, 392.0, 349.2, 293.7, 261.6, 261.6, 293.7, 392.0, 329.6, 349.2 ],
+      'DECK': [ 523.3, 493.9, 440.0, 392.0, 349.2, 329.6, 293.7, 261.6, 293.7, 329.6, 349.2, 293.7, 329.6, 293.7, 261.6 ]
     };
 
-    // --- Elements
-    const elTitle = $("#gameTitle");
-    const elFinish = $("#finishLine");
-    const elStepMin = $("#stepMin");
-    const elStepMax = $("#stepMax");
-    const elAutoRank = $("#toggleAutoRank");
-    const elTeamName = $("#teamName");
-    const elTeamEmoji = $("#teamEmoji");
-    const elTeamMembers = $("#teamMembers");
-    const elTeamColor = $("#teamColor");
-    const elTeamList = $("#teamList");
-    const elTracks = $("#tracks");
+    const SOUND_STYLES = {
+      'GAMEBOY': { type: 'square', decay: 0.1, attack: 0.01 },
+      'FLUTE': { type: 'sine', decay: 0.3, attack: 0.05 },
+      'LASER': { type: 'sawtooth', decay: 0.15, attack: 0.01 },
+      'CRYSTAL': { type: 'triangle', decay: 0.5, attack: 0.01 },
+      'TUBA': { type: 'square', decay: 0.2, attack: 0.1 },
+      'PIANO': { type: 'triangle', decay: 0.3, attack: 0.001 },
+      'BANJO': { type: 'sawtooth', decay: 0.1, attack: 0.001 }
+    };
+    const STYLE_KEYS = Object.keys(SOUND_STYLES);
 
-    const elBtnStart = $("#btnStart");
-    const elBtnAdvance = $("#btnAdvance");
-    const elBtnFinish = $("#btnFinish");
-    const elBtnAddTeam = $("#btnAddTeam");
-    const elBtnClearTeams = $("#btnClearTeams");
-    const elBtnExport = $("#btnExport");
-    const elBtnImport = $("#btnImport");
-    const elExportBox = $("#exportBox");
+    let noteIndex = 0;
+    let myCurrentSongKey = 'JINGLE';
+    let myStyleKey = 'GAMEBOY';
 
-    const elStageTitle = $("#stageTitle");
-    const elStageSub = $("#stageSubtitle");
-    const elRaceText = $("#raceText");
-    const elRaceDot = $("#raceDot");
+    let ponies = [];
+    let ponyQueue = [];
+    let grass = [];
+    let obstacles = [];
+    let gameState = 'ROAMING';
+    let cooldownTimer = 0;
+    let waitTimer = 0;
 
-    const elStatusPhase = $("#statusPhase");
-    const elStatusInfo = $("#statusInfo");
-    const elFinishLabel = $("#finishLabel");
+    let currentGameMode = 'CLASSIC';
+    let redLightTimer = 0;
+    let lightState = 'GREEN';
 
-    const elOverlay = $("#overlay");
-    const elResultsSub = $("#resultsSub");
-    const elResultsTbody = $("#resultsTable tbody");
-    const elBtnCloseOverlay = $("#btnCloseOverlay");
+    let tugValue = 50;
 
-    // --- Init UI from state
-    function syncInputsFromState(){
-      elTitle.value = state.settings.title;
-      elFinish.value = state.settings.finishLine;
-      elStepMin.value = state.settings.stepMin;
-      elStepMax.value = state.settings.stepMax;
-      elAutoRank.classList.toggle("on", !!state.settings.autoRank);
-      elAutoRank.setAttribute("aria-checked", !!state.settings.autoRank);
-      elFinishLabel.textContent = String(state.settings.finishLine);
-      elStageTitle.textContent = state.settings.title || "Race Arena";
+    let peer = null, conn = null;
+    let pcGrid = JSON.parse(JSON.stringify(DEFAULT_PIXELS));
+    let mobileGrid = JSON.parse(JSON.stringify(DEFAULT_PIXELS));
+    let selectedColor = COLORS.CYAN;
+    let playerUUID = null;
+
+    let mobileBtnState = 'wait';
+    let audioCtx = null;
+
+    // ✅ layout controls (zoom + stretchX + x + y)
+    let layout = { scale: 1.0, stretchX: 1.0, x: 0, y: 0 };
+    function getScaleX(){ return (layout.scale || 1) * (layout.stretchX || 1); }
+    function getScaleY(){ return (layout.scale || 1); }
+
+    let currentBarText = '';
+    let lastBroadcastText = '';
+
+    let lastShakeTime = 0;
+
+    // =========================
+    // ✅ Mobile iOS guards (prevent long-press popups / gesture zoom)
+    // =========================
+    let mobileGuardsInstalled = false;
+    function installMobileIOSGuards() {
+      if (mobileGuardsInstalled) return;
+      mobileGuardsInstalled = true;
+
+      // Prevent iOS long-press menu / selection overlays
+      document.addEventListener('contextmenu', (e) => e.preventDefault(), { passive: false });
+      document.addEventListener('selectstart', (e) => e.preventDefault(), { passive: false });
+
+      // Prevent pinch/gesture zoom quirks on some iOS versions
+      document.addEventListener('gesturestart', (e) => e.preventDefault(), { passive: false });
+
+      // Prevent double-tap-to-zoom
+      let lastTouchEnd = 0;
+      document.addEventListener('touchend', (e) => {
+        const now = Date.now();
+        if (now - lastTouchEnd <= 250) e.preventDefault();
+        lastTouchEnd = now;
+      }, { passive: false });
     }
 
-    function parseMembers(str){
-      return (str || "")
-        .split(",")
-        .map(s => s.trim())
-        .filter(Boolean);
+    // =========================
+    // ✅ Motion permission / re-attach after reconnect
+    // =========================
+    let motionAttached = false;
+
+    function attachMotionListener() {
+      if (motionAttached) return;
+      window.addEventListener('devicemotion', handleMotion);
+      motionAttached = true;
     }
 
-    function uid(){
-      return Math.random().toString(16).slice(2) + Date.now().toString(16).slice(2);
+    async function enableMotionFromGesture() {
+      try {
+        initAudio(); // keep iOS happy that a user gesture occurred
+        if (typeof DeviceMotionEvent !== 'undefined' && typeof DeviceMotionEvent.requestPermission === 'function') {
+          const state = await DeviceMotionEvent.requestPermission();
+          if (state === 'granted') attachMotionListener();
+          return state;
+        } else {
+          attachMotionListener();
+          return 'granted';
+        }
+      } catch (e) {
+        console.error(e);
+        return 'error';
+      }
     }
 
-    // --- Rendering
-    function renderTeamsList(){
-      elTeamList.innerHTML = "";
-      if(state.teams.length === 0){
-        const empty = document.createElement("div");
-        empty.className = "hint";
-        empty.textContent = "No teams yet. Add one above.";
-        elTeamList.appendChild(empty);
-        return;
+    function forceBlur() {
+      const ae = document.activeElement;
+      if (ae && typeof ae.blur === 'function') ae.blur();
+    }
+
+    // ✅ 关闭“上滑跳跃”（仍保留抬手机跳）
+    let swipeJumpEnabled = false;
+
+    // ✅ 下雪开关（host controlled）
+    let snowEnabled = true;
+
+    // ✅ 跑道描边控制（host controlled）
+    let trackBorderEnabled = true;
+    let trackBorderWidth = 2;
+
+    // ✅ 手机端隐藏控制面板：标题五连击
+    let mTitleTapCount = 0;
+    let mTitleTapTimer = null;
+
+    // ✅ TEAM 不要瞬移：加一个“自动居中”开关（默认关）
+    let tugAutoCenter = false;
+    const tugCenterLerp = 0.12;
+
+    function getTugCenterTargetX(){
+      const sx = getScaleX();
+      const desiredScreenShift = (window.innerWidth / 2) - ((gameW / 2) * sx);
+      return desiredScreenShift / sx;
+    }
+    function maybeAutoCenterTug(smooth=true){
+      if (currentGameMode !== 'TUG') return false;
+      if (!tugAutoCenter) return false;
+      const target = getTugCenterTargetX();
+      const before = layout.x;
+      layout.x = smooth ? (layout.x + (target - layout.x) * tugCenterLerp) : target;
+      return Math.abs(layout.x - before) > 0.0001;
+    }
+
+    const PEER_CONFIG = {
+      debug: 2,
+      config: {
+        'iceServers': [
+          { url: 'stun:stun.l.google.com:19302' },
+          { url: 'stun:stun1.l.google.com:19302' }
+        ]
+      }
+    };
+
+    function vibrate(pattern) { if (navigator.vibrate) navigator.vibrate(pattern); }
+
+    function clamp(n, a, b) { return Math.max(a, Math.min(b, n)); }
+
+    function setTrackLength(px, updateUI = true) {
+      const w = parseFloat(px);
+      if (isNaN(w)) return;
+      gameW = clamp(w, 800, 12000);
+      document.documentElement.style.setProperty('--game-w', gameW + 'px');
+
+      // clamp existing entities into new bounds
+      const maxX = gameW - 38;
+      ponies.forEach(p => { p.x = clamp(p.x, 0, maxX); });
+      ponyQueue.forEach(p => { p.x = clamp(p.x, 0, maxX); });
+
+      if (updateUI) {
+        const lenInput = document.getElementById('len-input');
+        if (lenInput) lenInput.value = String(Math.round(gameW));
       }
 
-      state.teams.forEach((t, idx) => {
-        const item = document.createElement("div");
-        item.className = "teamItem";
-        const top = document.createElement("div");
-        top.className = "teamTop";
+      applyLayout(false);
+    }
 
-        const name = document.createElement("div");
-        name.className = "teamName";
-        name.textContent = `${t.emoji || "🐴"} ${t.name || ("Team " + (idx+1))}`;
+    function setStretchX(percent, updateUI=true) {
+      const v = parseFloat(percent);
+      if (isNaN(v)) return;
+      layout.stretchX = clamp(v / 100, 0.5, 2.0);
+      if (updateUI) {
+        const sIn = document.getElementById('stretch-input');
+        const sSl = document.getElementById('stretch-slider');
+        if (sIn) sIn.value = (layout.stretchX * 100).toFixed(1);
+        if (sSl) sSl.value = (layout.stretchX * 100).toFixed(1);
+      }
+      applyLayout(false);
+    }
 
-        const meta = document.createElement("div");
-        meta.className = "teamMeta mono";
-        meta.textContent = `Members: ${t.members.length} · Color: ${t.color}`;
+    function setTugAutoCenter(enabled, updateUI=true){
+      tugAutoCenter = !!enabled;
+      if (updateUI) {
+        const cb = document.getElementById('tug-center-toggle');
+        const lbl = document.getElementById('tug-center-label');
+        if (cb) cb.checked = tugAutoCenter;
+        if (lbl) lbl.textContent = tugAutoCenter ? 'ON' : 'OFF';
+      }
+    }
 
-        top.appendChild(name);
-        top.appendChild(meta);
+    function createPixelIcon(type, pixelSize = 2, color = '#fff') {
+      const container = document.createElement('div');
+      container.className = 'pixel-icon-base';
+      container.style.width = pixelSize + 'px';
+      container.style.height = pixelSize + 'px';
+      const map = PIXEL_ART_MAPS[type] || PIXEL_ART_MAPS['HEART'];
+      let boxShadow = '';
+      for(let y=0; y<map.length; y++) {
+        for(let x=0; x<map[y].length; x++) {
+          if (map[y][x] === 1) { boxShadow += `${x*pixelSize}px ${y*pixelSize}px ${color},`; }
+        }
+      }
+      container.style.boxShadow = boxShadow.slice(0, -1);
+      const widthOffset = (7 * pixelSize) / 2;
+      container.style.transform = `translateX(-${widthOffset}px)`;
+      return container;
+    }
 
-        const members = document.createElement("div");
-        members.className = "members";
+    function playSignalSound(type) {
+      if (!audioCtx) return;
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      const now = audioCtx.currentTime;
 
-        (t.members.length ? t.members : ["(no members)"]).forEach(m => {
-          const chip = document.createElement("div");
-          chip.className = "chip";
-          const dot = document.createElement("span");
-          dot.className = "miniDot";
-          const text = document.createElement("span");
-          text.textContent = m;
-          chip.appendChild(dot);
-          chip.appendChild(text);
-          members.appendChild(chip);
+      gain.connect(audioCtx.destination);
+      osc.connect(gain);
+
+      if (type === 'GREEN') {
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(600, now);
+        osc.frequency.exponentialRampToValueAtTime(800, now + 0.1);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.3);
+        osc.start(now); osc.stop(now + 0.3);
+      } else if (type === 'YELLOW') {
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(400, now);
+        gain.gain.setValueAtTime(0.2, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.1);
+        osc.start(now); osc.stop(now + 0.1);
+
+        const osc2 = audioCtx.createOscillator();
+        const gain2 = audioCtx.createGain();
+        gain2.connect(audioCtx.destination);
+        osc2.connect(gain2);
+        osc2.type = 'square';
+        osc2.frequency.setValueAtTime(400, now + 0.15);
+        gain2.gain.setValueAtTime(0.2, now + 0.15);
+        gain2.gain.linearRampToValueAtTime(0, now + 0.25);
+        osc2.start(now + 0.15); osc2.stop(now + 0.25);
+      } else if (type === 'RED') {
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(150, now);
+        osc.frequency.linearRampToValueAtTime(100, now + 0.5);
+        gain.gain.setValueAtTime(0.3, now);
+        gain.gain.linearRampToValueAtTime(0, now + 0.5);
+        osc.start(now); osc.stop(now + 0.5);
+      }
+    }
+
+    function playNextNote() {
+      if (!audioCtx) return;
+      const now = audioCtx.currentTime;
+      const songArr = SONGS[myCurrentSongKey] || SONGS['JINGLE'];
+      let freq = songArr[noteIndex % songArr.length];
+      while (freq === 0) {
+        noteIndex++;
+        freq = songArr[noteIndex % songArr.length];
+      }
+      noteIndex++;
+      const style = SOUND_STYLES[myStyleKey] || SOUND_STYLES['GAMEBOY'];
+      const osc = audioCtx.createOscillator();
+      const gain = audioCtx.createGain();
+      osc.type = style.type;
+      osc.frequency.setValueAtTime(freq, now);
+      gain.connect(audioCtx.destination);
+      gain.gain.setValueAtTime(0, now);
+      gain.gain.linearRampToValueAtTime(0.3, now + style.attack);
+      gain.gain.exponentialRampToValueAtTime(0.01, now + style.attack + style.decay);
+      osc.connect(gain);
+      osc.start(now);
+      osc.stop(now + style.attack + style.decay + 0.1);
+    }
+
+    function randomizeMusic() {
+      const songKeys = Object.keys(SONGS);
+      myCurrentSongKey = songKeys[Math.floor(Math.random() * songKeys.length)];
+      myStyleKey = STYLE_KEYS[Math.floor(Math.random() * STYLE_KEYS.length)];
+      noteIndex = 0;
+    }
+
+    function setTrackBorder(enabled, widthPx, updateUI=true) {
+      trackBorderEnabled = !!enabled;
+      const w = parseFloat(widthPx);
+      if (!isNaN(w)) trackBorderWidth = Math.max(0, Math.min(20, w));
+
+      document.documentElement.style.setProperty('--track-border-on', trackBorderEnabled ? 1 : 0);
+      document.documentElement.style.setProperty('--track-border-w', trackBorderWidth + 'px');
+
+      if (updateUI) syncDesktopBorderUI();
+    }
+
+    function syncDesktopBorderUI() {
+      const cb = document.getElementById('border-toggle');
+      const lbl = document.getElementById('border-toggle-label');
+      const wInput = document.getElementById('border-width-input');
+      if (cb) cb.checked = !!trackBorderEnabled;
+      if (lbl) lbl.textContent = trackBorderEnabled ? 'ON' : 'OFF';
+      if (wInput) wInput.value = String(trackBorderWidth);
+    }
+
+    function syncDesktopSnowUI() {
+      const snowToggle = document.getElementById('snow-toggle');
+      const snowLabel = document.getElementById('snow-toggle-label');
+      if (snowToggle) snowToggle.checked = !!snowEnabled;
+      if (snowLabel) snowLabel.textContent = snowEnabled ? 'ON' : 'OFF';
+      if (!snowEnabled) {
+        const snowLayer = document.getElementById('layer-snow');
+        if (snowLayer) snowLayer.innerHTML = '';
+      }
+    }
+
+    function openMobileAdmin() {
+      const panel = document.getElementById('m-admin');
+      if (!panel) return;
+      panel.style.display = 'flex';
+      if (conn && conn.open) conn.send({ type: 'request_settings' });
+    }
+    function closeMobileAdmin() {
+      const panel = document.getElementById('m-admin');
+      if (!panel) return;
+      panel.style.display = 'none';
+    }
+
+    function sendHostControl(payload) {
+      if (!conn || !conn.open) return;
+      conn.send({ type: 'host_control', payload });
+    }
+
+    window.onload = function() {
+      const btns = document.querySelectorAll('.emoji-btn');
+      btns.forEach(btn => {
+        const type = btn.getAttribute('data-icon');
+        if (type) { btn.appendChild(createPixelIcon(type, 3, '#fff')); }
+      });
+
+      // init CSS length + desktop UI length
+      document.documentElement.style.setProperty('--game-w', gameW + 'px');
+      const lenInput = document.getElementById('len-input');
+      if (lenInput) lenInput.value = String(gameW);
+
+      // init stretch UI
+      const stretchInput = document.getElementById('stretch-input');
+      const stretchSlider = document.getElementById('stretch-slider');
+      if (stretchInput) stretchInput.value = (layout.stretchX * 100).toFixed(1);
+      if (stretchSlider) stretchSlider.value = (layout.stretchX * 100).toFixed(1);
+
+      const zoomSlider = document.getElementById('zoom-slider');
+      const zoomInput = document.getElementById('zoom-input');
+      const xSlider = document.getElementById('x-slider');
+      const xInput = document.getElementById('x-input');
+      const ySlider = document.getElementById('y-slider');
+      const yInput = document.getElementById('y-input');
+
+      // ✅ Zoom: decimals + enforce ArrowUp/Down increment 0.1
+      zoomSlider.oninput = function() {
+        zoomInput.value = this.value;
+        layout.scale = parseFloat(this.value) / 100;
+        applyLayout(false);
+      };
+      zoomInput.oninput = function() {
+        let val = parseFloat(this.value);
+        if (!isNaN(val)) {
+          zoomSlider.value = val;
+          layout.scale = val / 100;
+          applyLayout(false);
+        }
+      };
+      zoomInput.addEventListener('keydown', (e) => {
+        if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+        e.preventDefault();
+        let v = parseFloat(zoomInput.value);
+        if (isNaN(v)) v = layout.scale * 100;
+        const delta = (e.key === 'ArrowUp') ? 0.1 : -0.1;
+        v = Math.max(parseFloat(zoomInput.min || '1'), Math.min(parseFloat(zoomInput.max || '500'), v + delta));
+        v = Math.round(v * 10) / 10;
+        zoomInput.value = v.toFixed(1);
+        zoomSlider.value = v.toFixed(1);
+        layout.scale = v / 100;
+        applyLayout(false);
+      });
+
+      // ✅ Stretch X: percent
+      if (stretchSlider) {
+        stretchSlider.oninput = function() {
+          if (stretchInput) stretchInput.value = this.value;
+          setStretchX(this.value, false);
+        };
+      }
+      if (stretchInput) {
+        stretchInput.oninput = function() {
+          const val = parseFloat(this.value);
+          if (!isNaN(val)) {
+            if (stretchSlider) stretchSlider.value = val;
+            setStretchX(val, false);
+          }
+        };
+        stretchInput.addEventListener('keydown', (e) => {
+          if (e.key !== 'ArrowUp' && e.key !== 'ArrowDown') return;
+          e.preventDefault();
+          let v = parseFloat(stretchInput.value);
+          if (isNaN(v)) v = layout.stretchX * 100;
+          const delta = (e.key === 'ArrowUp') ? 0.1 : -0.1;
+          v = clamp(v + delta, 50, 200);
+          v = Math.round(v * 10) / 10;
+          stretchInput.value = v.toFixed(1);
+          if (stretchSlider) stretchSlider.value = v.toFixed(1);
+          setStretchX(v, false);
         });
-
-        const btns = document.createElement("div");
-        btns.className = "btnRow";
-        btns.style.marginTop = "10px";
-
-        const btnEdit = document.createElement("button");
-        btnEdit.className = "secondary small";
-        btnEdit.textContent = "Edit";
-        btnEdit.onclick = () => loadTeamIntoForm(t.id);
-
-        const btnRemove = document.createElement("button");
-        btnRemove.className = "danger secondary small";
-        btnRemove.textContent = "Remove";
-        btnRemove.onclick = () => removeTeam(t.id);
-
-        btns.appendChild(btnEdit);
-        btns.appendChild(btnRemove);
-
-        item.appendChild(top);
-        item.appendChild(members);
-        item.appendChild(btns);
-        elTeamList.appendChild(item);
-      });
-    }
-
-    function renderTracks(){
-      elTracks.innerHTML = "";
-
-      let teams = [...state.teams];
-
-      // optional auto rank during race
-      if(state.settings.autoRank && state.phase !== "idle"){
-        teams.sort((a,b) => (b.distance - a.distance));
       }
 
-      teams.forEach((t, idx) => {
-        const track = document.createElement("div");
-        track.className = "track";
-        track.dataset.teamId = t.id;
-
-        const theme = COLOR_THEMES[t.color] || COLOR_THEMES.gray;
-
-        const progress = document.createElement("div");
-        progress.className = "progressBar";
-        const pct = state.settings.finishLine > 0 ? (t.distance / state.settings.finishLine) * 100 : 0;
-        progress.style.width = `${clamp(pct, 0, 100)}%`;
-        progress.style.background = `linear-gradient(90deg, ${theme.bar}, rgba(255,255,255,0.02))`;
-        track.appendChild(progress);
-
-        const label = document.createElement("div");
-        label.className = "laneLabel";
-        const nm = document.createElement("div");
-        nm.className = "name";
-        nm.textContent = `${t.emoji || "🐴"} ${t.name}`;
-        const sub = document.createElement("div");
-        sub.className = "sub mono";
-        sub.textContent = `#${idx+1} · ${t.members.length} members`;
-        label.appendChild(nm);
-        label.appendChild(sub);
-        track.appendChild(label);
-
-        const finish = document.createElement("div");
-        finish.className = "finish";
-        track.appendChild(finish);
-
-        const horse = document.createElement("div");
-        horse.className = "horse";
-        horse.style.background = theme.horseBg;
-        horse.style.borderColor = "rgba(255,255,255,0.16)";
-        horse.style.boxShadow = `0 16px 30px rgba(0,0,0,0.28), 0 0 0 4px ${theme.glow}`;
-        const emoji = document.createElement("span");
-        emoji.className = "emoji";
-        emoji.textContent = t.emoji || "🐴";
-        horse.appendChild(emoji);
-
-        // position horse based on distance
-        // available width: track width - padding - finish offset
-        // we'll compute in RAF after adding to DOM for accurate width
-        track.appendChild(horse);
-
-        const footer = document.createElement("div");
-        footer.className = "trackFooter";
-        const meter = document.createElement("div");
-        meter.className = "meter mono";
-        meter.innerHTML = `<strong>${t.distance}</strong> / ${state.settings.finishLine}`;
-        footer.appendChild(meter);
-
-        const meter2 = document.createElement("div");
-        meter2.className = "meter mono";
-        const finished = (t.distance >= state.settings.finishLine);
-        meter2.innerHTML = finished
-          ? `<strong style="color: rgba(103,255,155,0.92);">FINISHED</strong>`
-          : `<strong>STEP</strong> ${state.stepCount}`;
-        footer.appendChild(meter2);
-
-        track.appendChild(footer);
-
-        elTracks.appendChild(track);
-
-        requestAnimationFrame(() => positionHorse(track, horse, t.distance));
-      });
-
-      // stage subtitle
-      if(state.teams.length === 0){
-        elStageSub.textContent = "Add teams on the left, then start.";
-      }else{
-        elStageSub.textContent = state.phase === "idle"
-          ? "Ready. Press Start."
-          : state.phase === "racing"
-            ? "Racing… Tap Advance to move."
-            : "Finished. View results below.";
-      }
-    }
-
-    function positionHorse(trackEl, horseEl, distance){
-      const finishLine = state.settings.finishLine || 100;
-      const pct = finishLine > 0 ? clamp(distance / finishLine, 0, 1) : 0;
-
-      // compute left range
-      const trackRect = trackEl.getBoundingClientRect();
-      const horseRect = horseEl.getBoundingClientRect();
-      const paddingLeft = 14;
-      const paddingRight = 48; // align with finish line marker
-      const maxLeft = trackRect.width - paddingRight - horseRect.width;
-      const left = paddingLeft + (maxLeft - paddingLeft) * pct;
-
-      horseEl.style.left = `${left}px`;
-    }
-
-    // --- Status UI
-    function setPhase(phase){
-      state.phase = phase;
-      elStatusPhase.textContent = phase.toUpperCase();
-      elStatusInfo.textContent = `${state.teams.length} teams · step ${state.stepCount}`;
-
-      if(phase === "idle"){
-        elRaceText.textContent = "Ready";
-        elRaceDot.className = "dot good";
-      }else if(phase === "racing"){
-        elRaceText.textContent = "Racing";
-        elRaceDot.className = "dot";
-      }else{
-        elRaceText.textContent = "Finished";
-        elRaceDot.className = "dot bad";
-      }
-    }
-
-    // --- Team ops
-    function addTeamFromForm(){
-      const name = (elTeamName.value || "").trim() || `Team ${state.teams.length+1}`;
-      const emoji = (elTeamEmoji.value || "🐴").trim() || "🐴";
-      const members = parseMembers(elTeamMembers.value);
-      const color = elTeamColor.value || "aqua";
-
-      const t = {
-        id: uid(),
-        name, emoji, members, color,
-        distance: 0,
-        finishedAtStep: null
+      // ✅ X offset (left-right)
+      xSlider.oninput = function() {
+        xInput.value = this.value;
+        layout.x = parseFloat(this.value);
+        applyLayout(false);
+      };
+      xInput.oninput = function() {
+        let val = parseFloat(this.value);
+        if (!isNaN(val)) {
+          xSlider.value = Math.round(val);
+          layout.x = val;
+          applyLayout(false);
+        }
       };
 
-      state.teams.push(t);
-      clearTeamForm();
-      renderAll();
-      saveLocal();
-    }
+      // ✅ Y offset
+      ySlider.oninput = function() {
+        yInput.value = this.value;
+        layout.y = parseFloat(this.value);
+        applyLayout(false);
+      };
+      yInput.oninput = function() {
+        let val = parseFloat(this.value);
+        if (!isNaN(val)) {
+          ySlider.value = val;
+          layout.y = val;
+          applyLayout(false);
+        }
+      };
 
-    function clearTeamForm(){
-      elTeamName.value = "";
-      elTeamEmoji.value = "🐴";
-      elTeamMembers.value = "";
-      elTeamColor.value = "aqua";
-      elBtnAddTeam.textContent = "Add Team";
-      elBtnAddTeam.dataset.editing = "";
-    }
+      // ✅ Track length
+      if (lenInput) {
+        lenInput.addEventListener('change', () => {
+          setTrackLength(lenInput.value, true);
+        });
+      }
 
-    function loadTeamIntoForm(teamId){
-      const t = state.teams.find(x => x.id === teamId);
-      if(!t) return;
-      elTeamName.value = t.name;
-      elTeamEmoji.value = t.emoji;
-      elTeamMembers.value = t.members.join(", ");
-      elTeamColor.value = t.color;
-      elBtnAddTeam.textContent = "Save Team";
-      elBtnAddTeam.dataset.editing = teamId;
-    }
+      // ✅ TUG CENTER toggle (desktop)
+      const tugCenterToggle = document.getElementById('tug-center-toggle');
+      const tugCenterLabel = document.getElementById('tug-center-label');
+      setTugAutoCenter(tugAutoCenter, true);
+      if (tugCenterToggle) {
+        tugCenterToggle.addEventListener('change', () => {
+          setTugAutoCenter(tugCenterToggle.checked, true);
+          if (tugAutoCenter && currentGameMode === 'TUG' && gameState === 'RACING') {
+            maybeAutoCenterTug(true);
+            applyLayout(false);
+          }
+        });
+      }
+      if (tugCenterLabel) tugCenterLabel.textContent = tugAutoCenter ? 'ON' : 'OFF';
 
-    function saveEditedTeam(teamId){
-      const t = state.teams.find(x => x.id === teamId);
-      if(!t) return;
+      // ✅ SNOW toggle
+      const snowToggle = document.getElementById('snow-toggle');
+      const snowLabel = document.getElementById('snow-toggle-label');
+      if (snowToggle) {
+        snowEnabled = snowToggle.checked;
+        if (snowLabel) snowLabel.textContent = snowEnabled ? 'ON' : 'OFF';
+        snowToggle.addEventListener('change', () => {
+          snowEnabled = snowToggle.checked;
+          if (snowLabel) snowLabel.textContent = snowEnabled ? 'ON' : 'OFF';
+          if (!snowEnabled) {
+            const snowLayer = document.getElementById('layer-snow');
+            if (snowLayer) snowLayer.innerHTML = '';
+          }
+        });
+      }
 
-      t.name = (elTeamName.value || "").trim() || t.name;
-      t.emoji = (elTeamEmoji.value || "").trim() || t.emoji;
-      t.members = parseMembers(elTeamMembers.value);
-      t.color = elTeamColor.value || t.color;
+      // ✅ BORDER controls (desktop)
+      const borderToggle = document.getElementById('border-toggle');
+      const borderLabel = document.getElementById('border-toggle-label');
+      const borderWidthInput = document.getElementById('border-width-input');
 
-      clearTeamForm();
-      renderAll();
-      saveLocal();
-    }
+      if (borderToggle) {
+        trackBorderEnabled = borderToggle.checked;
+        if (borderLabel) borderLabel.textContent = trackBorderEnabled ? 'ON' : 'OFF';
+        borderToggle.addEventListener('change', () => {
+          trackBorderEnabled = borderToggle.checked;
+          if (borderLabel) borderLabel.textContent = trackBorderEnabled ? 'ON' : 'OFF';
+          setTrackBorder(trackBorderEnabled, trackBorderWidth, false);
+        });
+      }
+      if (borderWidthInput) {
+        trackBorderWidth = parseFloat(borderWidthInput.value) || 2;
+        borderWidthInput.addEventListener('input', () => {
+          const w = parseFloat(borderWidthInput.value);
+          if (!isNaN(w)) setTrackBorder(trackBorderEnabled, w, false);
+        });
+      }
+      setTrackBorder(trackBorderEnabled, trackBorderWidth, true);
 
-    function removeTeam(teamId){
-      state.teams = state.teams.filter(t => t.id !== teamId);
-      renderAll();
-      saveLocal();
-    }
+      const gameContainer = document.getElementById('desktop-view');
+      gameContainer.addEventListener('wheel', (e) => {
+        e.preventDefault();
+        if (e.ctrlKey) {
+          const zoomSpeed = 0.001;
+          const newScale = layout.scale - (e.deltaY * zoomSpeed);
+          layout.scale = Math.min(Math.max(0.1, newScale), 5.0);
+        } else {
+          const panSpeed = 1.0;
+          layout.y -= e.deltaY * panSpeed;
+        }
+        applyLayout(true);
+      }, { passive: false });
 
-    function clearAllTeams(){
-      state.teams = [];
-      state.stepCount = 0;
-      state.startedAt = null;
-      setPhase("idle");
-      renderAll();
-      saveLocal();
-    }
+      const vfdOverlay = document.getElementById('vfd-overlay');
+      for (let i = 0; i < 80; i++) {
+        const arrow = document.createElement('i');
+        arrow.style.setProperty('--d', i * 0.01);
+        vfdOverlay.appendChild(arrow);
+      }
 
-    // --- Game ops
-    function startRace(){
-      // update settings from inputs
-      applySettingsFromInputs();
+      requestAnimationFrame(gameLoop);
+      fitScreen();
 
-      // reset distances
-      state.teams.forEach(t => {
-        t.distance = 0;
-        t.finishedAtStep = null;
+      window.addEventListener('keydown', (e) => {
+        if (e.target.tagName === 'INPUT') return;
+        const step = 20 / (layout.scale || 1);
+        const zoomStep = 0.05;
+        let changed = false;
+        switch(e.key) {
+          case 'ArrowUp': layout.y -= step; changed = true; break;
+          case 'ArrowDown': layout.y += step; changed = true; break;
+          case 'ArrowLeft': layout.x -= step; changed = true; break;
+          case 'ArrowRight': layout.x += step; changed = true; break;
+          case '=': case '+': layout.scale += zoomStep; changed = true; break;
+          case '-': case '_': layout.scale = Math.max(0.1, layout.scale - zoomStep); changed = true; break;
+          case '0': fitScreen(); return;
+        }
+        if(changed) applyLayout(true);
       });
 
-      state.stepCount = 0;
-      state.startedAt = Date.now();
-      setPhase("racing");
-      renderAll();
-      saveLocal();
+      // ✅ Routing:
+      // - /join (or ?join=1) : permanent QR landing
+      // - ?host=...          : mobile controller
+      // - otherwise          : desktop host view
+      const sp = new URLSearchParams(window.location.search);
+      const isJoin = (location.pathname.endsWith('/join') || sp.has('join'));
+      const isMobile = sp.has('host');
+      if(isJoin) {
+        document.getElementById('desktop-view').style.display = 'none';
+        document.getElementById('mobile-view').style.display = 'none';
+        initJoin();
+      } else if(isMobile) {
+        document.getElementById('desktop-view').style.display = 'none';
+        document.getElementById('mobile-view').style.display = 'flex';
+        initMobile();
+      } else {
+        initDesktop();
+      }
+    };
+
+    function updateBarText(text, color) {
+      if (currentBarText === text) return;
+      currentBarText = text;
+      const container = document.getElementById('bar-text');
+      let content = '';
+      for(let i=0; i<12; i++) { content += `<span class="bar-text-item">${text}</span>`; }
+      container.innerHTML = content;
+      if(color) { container.style.color = color; } else { container.style.color = ''; }
+    }
+    function setBarVisibility(show) {
+      document.getElementById('track-display-bar').style.display = show ? 'flex' : 'none';
+      if(!show) currentBarText = '';
+    }
+    function triggerFlash() {
+      const screen = document.getElementById('track-wrapper');
+      screen.classList.remove('flash-active');
+      void screen.offsetWidth;
+      screen.classList.add('flash-active');
+    }
+    function broadcast(data) {
+      if(!peer || !peer.connections) return;
+      Object.values(peer.connections).forEach(conns => {
+        conns.forEach(conn => { if(conn.open) conn.send(data); });
+      });
     }
 
-    function applySettingsFromInputs(){
-      const finish = clamp(parseInt(elFinish.value || "100", 10), 10, 500);
-      const stepMin = clamp(parseInt(elStepMin.value || "4", 10), 1, 99);
-      const stepMax = clamp(parseInt(elStepMax.value || "12", 10), 1, 200);
-
-      state.settings.title = (elTitle.value || "").trim() || state.settings.title;
-      state.settings.finishLine = finish;
-      state.settings.stepMin = Math.min(stepMin, stepMax);
-      state.settings.stepMax = Math.max(stepMin, stepMax);
-      syncInputsFromState();
+    function fitScreen() {
+      const availableW = window.innerWidth * 0.95;
+      const effectiveW = (gameW + GAME_H) * (layout.stretchX || 1);
+      layout.scale = Math.min(availableW / effectiveW, 1);
+      layout.x = 0; layout.y = 0;
+      applyLayout(true);
     }
 
-    function advanceStep(){
-      if(state.phase !== "racing") return;
-      applySettingsFromInputs();
+    function applyLayout(updateInput = true) {
+      const el = document.getElementById('track-wrapper');
 
-      state.stepCount += 1;
-      const { stepMin, stepMax, finishLine } = state.settings;
+      // ✅ non-uniform scale: stretchX only affects X
+      el.style.transform = `scale(${getScaleX()}, ${getScaleY()}) translate(${layout.x}px, ${layout.y}px)`;
 
-      state.teams.forEach(t => {
-        if(t.distance >= finishLine) return;
-        const step = randInt(stepMin, stepMax);
-        t.distance = clamp(t.distance + step, 0, finishLine);
-        if(t.distance >= finishLine && t.finishedAtStep == null){
-          t.finishedAtStep = state.stepCount;
+      if(updateInput) {
+        const zoomPct = layout.scale * 100;
+        const stretchPct = (layout.stretchX || 1) * 100;
+
+        const zi = document.getElementById('zoom-input');
+        const zs = document.getElementById('zoom-slider');
+        if (zi) zi.value = zoomPct.toFixed(1);
+        if (zs) zs.value = zoomPct.toFixed(1);
+
+        const si = document.getElementById('stretch-input');
+        const ss = document.getElementById('stretch-slider');
+        if (si) si.value = stretchPct.toFixed(1);
+        if (ss) ss.value = stretchPct.toFixed(1);
+
+        const xi = document.getElementById('x-input');
+        const xs = document.getElementById('x-slider');
+        if (xi) xi.value = Number(layout.x).toFixed(1);
+        if (xs) xs.value = Math.round(layout.x);
+
+        const yi = document.getElementById('y-input');
+        const ys = document.getElementById('y-slider');
+        if (yi) yi.value = Number(layout.y).toFixed(1);
+        if (ys) ys.value = Number(layout.y);
+      }
+    }
+
+
+    // =========================
+    // ✅ Stable QR / Host ID
+    // =========================
+    const HOST_ID_STORAGE_KEY = 'HRR_HOST_ID';
+
+    // =========================
+    // ✅ Permanent QR /join routing (room-based)
+    // =========================
+    const DEFAULT_ROOM_ID = 'TEAM01';
+
+    function getRoomId() {
+      // Allow overriding room via query on the main page (useful for multiple setups):
+      //   https://nowheretorun.studionowhere.com/?room=TEAM01
+      try {
+        const sp = new URLSearchParams(window.location.search);
+        return (sp.get('room') || DEFAULT_ROOM_ID).trim() || DEFAULT_ROOM_ID;
+      } catch(e) {
+        return DEFAULT_ROOM_ID;
+      }
+    }
+
+    // =========================
+    // ✅ Host presence reporting (requires a tiny backend/serverless endpoint)
+    // =========================
+    // NOTE: For production, your developer should validate this token server-side.
+    // Leave empty if you don't use token auth.
+    const HOST_REPORT_TOKEN = '';
+
+    async function reportHostOnline(hostId) {
+      try {
+        const body = { room: getRoomId(), hostId: hostId };
+        if (HOST_REPORT_TOKEN) body.token = HOST_REPORT_TOKEN;
+
+        await fetch('/api/set-host', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          cache: 'no-store',
+          body: JSON.stringify(body)
+        });
+      } catch(e) {
+        // Silent fail: game should still run even if backend is not ready
+      }
+    }
+
+    function startHostHeartbeat(hostId) {
+      reportHostOnline(hostId);
+      return setInterval(() => reportHostOnline(hostId), 15000);
+    }
+
+    function getOrCreateHostId() {
+      let id = null;
+      try { id = localStorage.getItem(HOST_ID_STORAGE_KEY); } catch(e) {}
+      if (!id) {
+        id = 'HRR-' + Math.random().toString(36).slice(2, 10);
+        try { localStorage.setItem(HOST_ID_STORAGE_KEY, id); } catch(e) {}
+      }
+      return id;
+    }
+
+    function clearQr() {
+      const el = document.getElementById('qrcode');
+      if (el) el.innerHTML = '';
+    }
+
+    function buildJoinUrl() {
+      // ✅ Permanent QR: always points to /join (room-based routing)
+      const room = getRoomId();
+      const joinUrl = `${location.origin}/join?room=${encodeURIComponent(room)}`;
+      return joinUrl;
+    }
+
+    function initJoin() {
+      // Landing page used by the permanent QR: /join?room=TEAM01
+      const joinView = document.getElementById('join-view');
+      const msg = document.getElementById('join-msg');
+      const retry = document.getElementById('join-retry');
+      const openMain = document.getElementById('join-open-main');
+
+      const sp = new URLSearchParams(window.location.search);
+      const room = (sp.get('room') || DEFAULT_ROOM_ID).trim() || DEFAULT_ROOM_ID;
+
+      function showError() {
+        if (msg) msg.innerHTML = `No host online for <span style="opacity:.9">${room}</span>. Please try again in a moment.`;
+        if (retry) retry.style.display = 'inline-block';
+      }
+
+      async function go() {
+        if (retry) retry.style.display = 'none';
+        if (msg) msg.textContent = 'Finding the current host…';
+
+        try {
+          const r = await fetch(`/api/active-host?room=${encodeURIComponent(room)}`, { cache: 'no-store' });
+          if (!r.ok) throw new Error('bad status');
+          const data = await r.json();
+          if (!data || !data.hostId) throw new Error('no host');
+
+          // Redirect to the main page with the live host id
+          location.replace(`/?host=${encodeURIComponent(data.hostId)}&room=${encodeURIComponent(room)}`);
+        } catch(e) {
+          showError();
+        }
+      }
+
+      if (joinView) joinView.style.display = 'flex';
+      if (retry) retry.onclick = go;
+      if (openMain) openMain.onclick = () => { location.href = `/?room=${encodeURIComponent(room)}`; };
+
+      go();
+    }
+
+    function initDesktop() {
+      initEditor('pc-grid', 'pc-colors', pcGrid);
+      try {
+        const hostId = getOrCreateHostId();
+        peer = new Peer(hostId, PEER_CONFIG);
+        peer.on('open', id => {
+          const url = buildJoinUrl();
+          // ✅ Tell backend this host is online (so /join can find it)
+          startHostHeartbeat(id);
+          clearQr();
+          new QRCode(document.getElementById("qrcode"), {
+            text: url, width: 86, height: 86,
+            colorDark : "#000000", colorLight : "#ffffff", correctLevel: QRCode.CorrectLevel.L
+          });
+        });
+
+        peer.on('connection', c => {
+          c.on('data', data => {
+            if (data.type === 'request_settings') {
+              const modeSel = document.getElementById('mode-select');
+              c.send({
+                type: 'settings',
+                zoom: layout.scale * 100,
+                stretch: layout.stretchX * 100,
+                x: layout.x,
+                y: layout.y,
+                length: gameW,
+                tugAutoCenter: !!tugAutoCenter,
+                mode: modeSel ? modeSel.value : 'CLASSIC',
+                snowEnabled: !!snowEnabled,
+                borderEnabled: !!trackBorderEnabled,
+                borderWidth: trackBorderWidth
+              });
+              return;
+            }
+
+            if (data.type === 'host_control' && data.payload) {
+              const p = data.payload;
+
+              if (p.action === 'set_layout') {
+                const z = parseFloat(p.zoom);
+                const st = parseFloat(p.stretch);
+                const x = parseFloat(p.x);
+                const y = parseFloat(p.y);
+                if (!isNaN(z)) layout.scale = z / 100;
+                if (!isNaN(st)) layout.stretchX = clamp(st / 100, 0.5, 2.0);
+                if (!isNaN(x)) layout.x = x;
+                if (!isNaN(y)) layout.y = y;
+                applyLayout(true);
+              }
+
+              if (p.action === 'set_length') {
+                setTrackLength(p.length, true);
+              }
+
+              if (p.action === 'set_mode') {
+                const modeSel = document.getElementById('mode-select');
+                if (modeSel && p.mode) modeSel.value = p.mode;
+              }
+
+              if (p.action === 'set_snow') {
+                snowEnabled = !!p.enabled;
+                syncDesktopSnowUI();
+              }
+
+              if (p.action === 'set_border') {
+                const en = (p.enabled !== undefined) ? !!p.enabled : trackBorderEnabled;
+                const w = (p.width !== undefined) ? p.width : trackBorderWidth;
+                setTrackBorder(en, w, true);
+              }
+
+              if (p.action === 'set_tug_center') {
+                setTugAutoCenter(!!p.enabled, true);
+              }
+
+              if (p.action === 'add_bot') {
+                spawnTestPony();
+              }
+
+              return;
+            }
+
+            if (data.type === 'check_reconnect') {
+              const uuid = data.uuid;
+              const exists = ponies.find(p => p.playerUUID === uuid) || ponyQueue.find(p => p.playerUUID === uuid);
+              if (exists) c.send({ type: 'reconnect_success' });
+            } else if (data.type === 'spawn') {
+              const uuid = data.payload.uuid;
+              const exists = ponies.find(p => p.playerUUID === uuid) || ponyQueue.find(p => p.playerUUID === uuid);
+              if (!exists) requestSpawnPony(data.payload.name, data.payload.pixels, data.payload.color, uuid);
+
+              if (gameState === 'RACING') {
+                c.send({ type: 'sync_ui', label: 'WAITING', mode: 'wait' });
+              }
+            } else if (data.type === 'tap') {
+              handleTap(data.uuid);
+            } else if (data.type === 'jump') {
+              handleJump(data.uuid);
+            } else if (data.type === 'force_start') {
+              if (data.mode) {
+                const modeSel = document.getElementById('mode-select');
+                if(modeSel) modeSel.value = data.mode;
+              }
+              if (gameState === 'ROAMING' || gameState === 'WAITING_TO_START') startCooldown();
+            } else if (data.type === 'emoji') {
+              triggerPonyEmoji(data.uuid, data.content);
+            }
+          });
+        });
+
+        peer.on('error', (err) => {
+          console.error("PeerJS Error:", err);
+
+          // ✅ If this host id is already in use (e.g., another tab/device), regenerate once.
+          if (err && err.type === 'unavailable-id') {
+            try { localStorage.removeItem(HOST_ID_STORAGE_KEY); } catch(e) {}
+            alert("Host ID is already in use. Generating a new QR code...");
+            location.reload();
+            return;
+          }
+
+          alert("Network Error: " + (err && err.type ? err.type : "unknown") + "\nTry refreshing.");
+        });
+      } catch(e) { console.error(e); }
+    }
+
+    function spawnTestPony() {
+      const names = ["SPEEDY", "THUNDER", "BOLT", "COMET", "DASH", "FLASH", "STORM", "SHADOW", "BLAZE", "SPIRIT"];
+      const rName = names[Math.floor(Math.random() * names.length)] + " " + Math.floor(Math.random()*99);
+      const colorKeys = Object.keys(COLORS);
+      const rColorKey = colorKeys[Math.floor(Math.random() * colorKeys.length)];
+      requestSpawnPony(rName, DEFAULT_PIXELS, COLORS[rColorKey], null);
+    }
+
+    function applyTugForce(team) {
+      const power = 1.5;
+      if (team === 1) tugValue = Math.min(100, tugValue + power);
+      else tugValue = Math.max(0, tugValue - power);
+    }
+
+    function spawnBattleSparks(x) {
+      const fx = document.getElementById('layer-fx');
+      const count = Math.random() < 0.5 ? 1 : 2;
+      for(let i=0; i<count; i++) {
+        const el = document.createElement('div');
+        el.className = 'tug-spark';
+        el.style.left = x + 'px';
+        el.style.top = (Math.random() * GAME_H) + 'px';
+        fx.appendChild(el);
+
+        const angle = (Math.random() - 0.5) * Math.PI;
+        const speed = 5 + Math.random() * 10;
+        let vx = Math.cos(angle) * speed * (Math.random() < 0.5 ? 1 : -1);
+        let vy = (Math.random() - 0.5) * 10;
+
+        let life = 30;
+        const tick = () => {
+          life--;
+          if(life <= 0) { el.remove(); return; }
+          el.style.left = (parseFloat(el.style.left) + vx) + 'px';
+          el.style.top = (parseFloat(el.style.top) + vy) + 'px';
+          el.style.opacity = life / 30;
+          vy += 0.5;
+          requestAnimationFrame(tick);
+        };
+        tick();
+      }
+    }
+
+    function handleTap(uuid) {
+      if (!uuid) return;
+      const pony = ponies.find(p => p.playerUUID === uuid);
+
+      if (pony && pony.state === 'racing') {
+
+        if (currentGameMode === 'TUG') {
+          applyTugForce(pony.team);
+          pony.tapCount++;
+          pony.isWalkAnimating = true;
+          pony.manualAnimTimer = 5;
+
+          pony.pullOffset = (pony.team === 1 ? 35 : -35);
+
+          const fx = document.getElementById('layer-fx');
+          const shock = document.createElement('div');
+          shock.className = 'shockwave';
+          shock.style.left = (pony.x + 25) + 'px';
+          shock.style.top = (pony.y + 25) + 'px';
+          shock.style.borderColor = (pony.team === 1) ? '#2979ff' : '#ff5252';
+          fx.appendChild(shock);
+          setTimeout(() => shock.remove(), 400);
+
+          if (Math.random() < 0.5) {
+            const d = document.createElement('div');
+            d.style.position = 'absolute';
+            d.style.left = (pony.x + 20) + 'px';
+            d.style.top = (pony.y + 40) + 'px';
+            d.style.width = '6px'; d.style.height = '6px';
+            d.style.background = '#888';
+            d.style.opacity = '0.6';
+            d.style.animation = 'text-vanish 0.5s forwards';
+            fx.appendChild(d);
+            setTimeout(() => d.remove(), 500);
+          }
+          return;
+        }
+
+        if (pony.isStunned) return;
+
+        if (currentGameMode === 'RED_LIGHT' && lightState === 'RED') {
+          if (pony.invincibleTimer <= 0) {
+            pony.isStunned = true;
+            pony.stunTimer = 60;
+            pony.invincibleTimer = 90;
+            pony.manualSpeed = -15;
+            triggerPonyEmoji(pony.playerUUID, 'POOP');
+          }
+          return;
+        }
+
+        pony.isManual = true; pony.lastTapTime = Date.now(); pony.tapCount++;
+        pony.name = pony.name.replace(" (BOT)", "");
+        pony.manualSpeed = Math.min(pony.manualSpeed + 2.4, 18);
+        pony.turboCharge = Math.min(pony.turboCharge + 20, 100);
+        if (pony.manualAnimTimer === 0) pony.manualAnimTimer = 10;
+      }
+    }
+
+    function handleJump(uuid) {
+      if (!uuid) return;
+      const pony = ponies.find(p => p.playerUUID === uuid);
+      if (pony && pony.state === 'racing' && !pony.isStunned && !pony.isJumping) {
+        if (currentGameMode === 'RED_LIGHT') return;
+        pony.isJumping = true;
+        pony.vz = 12;
+        pony.isManual = true;
+      }
+    }
+
+    function requestSpawnPony(name, pixels, color, uuid = null) {
+      const newPony = {
+        id: Math.random().toString(36).substr(2, 9),
+        playerUUID: uuid, isManual: !!uuid, manualSpeed: 0, tapCount: 0, lastTapTime: Date.now(),
+        name: name || 'PONY', pixels: JSON.parse(JSON.stringify(pixels || DEFAULT_PIXELS)), color: color || COLORS.CYAN,
+        x: 20, y: 30 + Math.random() * (GAME_H - PONY_SIZE - 20), speed: 3.0, state: 'racing',
+        hasCrown: false, isStreak: false, crownCount: 0, timer: 0, frame: 0, finishedWalking: false,
+        targetX: null, targetY: null, isWalkAnimating: false, manualAnimTimer: 0, roamSpeed: 0.5,
+        isTurbo: false, turboCharge: 0,
+        z: 0, vz: 0, isJumping: false, isStunned: false, stunTimer: 0, invincibleTimer: 0,
+        pullOffset: 0
+      };
+      if (gameState === 'RACING' || gameState === 'COOLDOWN' || gameState === 'WAITING_TO_START') {
+        ponyQueue.push(newPony);
+      } else {
+        ponies.push(newPony);
+        startCooldown();
+      }
+    }
+
+    function startCooldown() {
+      if (ponyQueue.length > 0) { ponies = ponies.concat(ponyQueue); ponyQueue = []; }
+
+      let selected = document.getElementById('mode-select').value;
+
+      if (selected === 'TUG' && ponies.length < 2) {
+        alert("NOT ENOUGH PLAYERS FOR TUG WAR (MIN 2)");
+        selected = 'CLASSIC';
+        document.getElementById('mode-select').value = 'CLASSIC';
+      }
+
+      if (selected === 'RANDOM') {
+        let modes = ['CLASSIC', 'HURDLE', 'RED_LIGHT'];
+        if (ponies.length >= 2) modes.push('TUG');
+        currentGameMode = modes[Math.floor(Math.random() * modes.length)];
+      } else {
+        currentGameMode = selected;
+      }
+
+      gameState = 'COOLDOWN'; cooldownTimer = 240;
+
+      if (currentGameMode === 'TUG') {
+        const allPonies = [...ponies].sort(() => Math.random() - 0.5);
+        const teamMap = {};
+        allPonies.forEach((p, index) => {
+          p.team = (index % 2 === 0) ? 1 : -1;
+          p.tapCount = 0;
+          if (p.playerUUID) teamMap[p.playerUUID] = (p.team === 1) ? 'BLUE' : 'RED';
+        });
+        broadcast({ type: 'sync_ui', label: 'READY', mode: 'wait', teamMap: teamMap });
+      } else {
+        broadcast({ type: 'sync_ui', label: 'READY', mode: 'wait' });
+      }
+
+      ponies.forEach(p => {
+        p.state = 'ready';
+        p.manualSpeed = 0; p.tapCount = 0;
+        p.isWalkAnimating = false; p.manualAnimTimer = 0; p.isTurbo = false; p.turboCharge = 0;
+        p.z = 0; p.vz = 0; p.isStunned = false; p.stunTimer = 0; p.invincibleTimer = 0;
+        p.pullOffset = 0;
+
+        if (currentGameMode === 'TUG') {
+          const teamMembers = ponies.filter(tm => tm.team === p.team).sort((a,b) => a.id.localeCompare(b.id));
+          const myIndex = teamMembers.findIndex(tm => tm.id === p.id);
+          const baseY = (GAME_H - PONY_SIZE) / 2 + 10;
+
+          if (p.team === 1) {
+            p.x = (gameW / 2) - 100 - (myIndex * 50);
+            p.facing = 1;
+          } else {
+            p.x = (gameW / 2) + 100 + (myIndex * 50);
+            p.facing = -1;
+          }
+          p.y = baseY;
+        } else {
+          p.x = 20;
+          p.facing = 1;
+          p.y = 30 + Math.random() * (GAME_H - PONY_SIZE - 30);
         }
       });
 
-      // check finish
-      const allDone = state.teams.length > 0 && state.teams.every(t => t.distance >= finishLine);
-      if(allDone){
-        finishRace("All teams reached the finish line.");
+      document.getElementById('hud').style.display = 'none';
+      document.getElementById('queue-text').style.display = 'none';
+      setBarVisibility(true);
+
+      let modeName = "CLASSIC";
+      if (currentGameMode === 'RED_LIGHT') modeName = "STOP?";
+      else if (currentGameMode === 'HURDLE') modeName = "JUMP";
+      else if (currentGameMode === 'CLASSIC') modeName = "RUN";
+      else if (currentGameMode === 'TUG') modeName = "TEAM";
+
+      updateBarText(modeName, "#ffffff");
+
+      const tugLayer = document.getElementById('tug-layer');
+      if (currentGameMode === 'TUG' && tugLayer) {
+        tugValue = 50;
+        tugLayer.style.display = 'block';
+        const bZone = document.getElementById('tug-blue-zone');
+        if(bZone) bZone.style.width = '50%';
+        const rZone = document.getElementById('tug-red-zone');
+        if(rZone) rZone.style.width = '50%';
+
+        // ✅ 关键修复：TEAM准备阶段不强制改 layout.x（避免跑道跳到右边）
+        // 如果你想在TEAM中自动居中，打开 TUG CENTER，会在RACING阶段平滑居中
+      } else if (tugLayer) {
+        document.getElementById('game-screen').className = '';
+        lightState = 'GREEN';
+        tugLayer.style.display = 'none';
       }
 
-      renderAll();
-      saveLocal();
+      obstacles = [];
     }
 
-    function finishRace(reason="Finished"){
-      if(state.phase === "finished") return;
-      setPhase("finished");
-      showResults(reason);
-      renderAll();
-      saveLocal();
-    }
+    function startRace() {
+      updateBarText("GO!", "#ffffff");
 
-    // --- Results
-    function getRankedTeams(){
-      const finishLine = state.settings.finishLine;
-      const teams = [...state.teams];
+      let statusText = "STATUS: RACING";
+      let mobileInfo = "RUN (TAP)";
 
-      // Primary: finished earlier step; Secondary: higher distance; Tertiary: original order
-      teams.sort((a,b) => {
-        const af = (a.distance >= finishLine);
-        const bf = (b.distance >= finishLine);
+      const tugLayer = document.getElementById('tug-layer');
+      if(tugLayer) tugLayer.style.display = 'none';
 
-        if(af && bf){
-          // both finished: smaller finishedAtStep wins (null last)
-          const as = a.finishedAtStep ?? 1e9;
-          const bs = b.finishedAtStep ?? 1e9;
-          if(as !== bs) return as - bs;
-          return b.distance - a.distance;
+      if (currentGameMode === 'HURDLE') {
+        statusText = "STATUS: JUMP";
+        mobileInfo = "TAP: RUN / UP: JUMP";
+        obstacles = [];
+        for(let ox = 500; ox < getFinishX() - 200; ox += (400 + Math.random() * 300)) {
+          obstacles.push({ x: ox, width: 10, passed: false });
         }
-        if(af && !bf) return -1;
-        if(!af && bf) return 1;
+      } else if (currentGameMode === 'RED_LIGHT') {
+        statusText = "STATUS: STOP?";
+        mobileInfo = "WATCH!";
+        obstacles = [];
+        lightState = 'GREEN';
+        redLightTimer = (120 + Math.random() * 100) * 0.8;
+        document.getElementById('game-screen').classList.add('bg-green');
+        playSignalSound('GREEN');
+      } else if (currentGameMode === 'TUG') {
+        statusText = "TEAM BATTLE";
+        mobileInfo = "PULL!";
+        tugValue = 50;
+        obstacles = [];
 
-        // neither finished
-        if(b.distance !== a.distance) return b.distance - a.distance;
-        return 0;
+        if(tugLayer) tugLayer.style.display = 'block';
+
+        const teamMap = {};
+        ponies.forEach(p => {
+          if (p.playerUUID) teamMap[p.playerUUID] = (p.team === 1) ? 'BLUE' : 'RED';
+        });
+        broadcast({ type: 'sync_ui', label: 'PULL!', mode: 'tug', teamMap: teamMap });
+
+        // ✅ TEAM开始也不强制改layout.x（避免跳）
+        // 自动居中只在RACING阶段且开关开启时平滑执行
+      } else {
+        statusText = "STATUS: RUN";
+        obstacles = [];
+      }
+
+      const hud = document.getElementById('hud');
+      hud.style.display = 'block';
+      hud.innerText = statusText;
+
+      const vfdOverlay = document.getElementById('vfd-overlay');
+      vfdOverlay.classList.remove('vfd-active'); void vfdOverlay.offsetWidth; vfdOverlay.classList.add('vfd-active');
+
+      const textItems = document.querySelectorAll('.bar-text-item');
+      textItems.forEach((item, index) => {
+        item.style.animation = `text-vanish 0.05s linear forwards ${delay = 0.02 + (index * 0.06)}s`;
       });
 
-      return teams;
-    }
+      setTimeout(() => {
+        if (gameState === 'RACING') {
+          setBarVisibility(false);
+          vfdOverlay.classList.remove('vfd-active');
+        }
+      }, 1500);
 
-    function showResults(reason){
-      const ranked = getRankedTeams();
-      elResultsTbody.innerHTML = "";
-
-      const started = state.startedAt ? new Date(state.startedAt) : null;
-      const elapsed = state.startedAt ? Math.max(0, Date.now() - state.startedAt) : 0;
-      const seconds = Math.round(elapsed/1000);
-
-      elResultsSub.textContent = `${reason} · Steps: ${state.stepCount} · Elapsed: ${seconds}s`;
-
-      ranked.forEach((t, idx) => {
-        const tr = document.createElement("tr");
-        const tdRank = document.createElement("td");
-        tdRank.textContent = String(idx+1);
-        const tdTeam = document.createElement("td");
-        tdTeam.textContent = `${t.emoji || "🐴"} ${t.name}`;
-        const tdDist = document.createElement("td");
-        tdDist.className = "mono";
-        tdDist.textContent = `${t.distance}/${state.settings.finishLine}`;
-        const tdMembers = document.createElement("td");
-        tdMembers.textContent = t.members.join(", ") || "(no members)";
-
-        tr.appendChild(tdRank);
-        tr.appendChild(tdTeam);
-        tr.appendChild(tdDist);
-        tr.appendChild(tdMembers);
-        elResultsTbody.appendChild(tr);
+      ponies.forEach(p => {
+        if (currentGameMode !== 'TUG') p.speed = 3.0 + Math.random() * 2.5;
+        p.state = 'racing';
+        p.finishedWalking = false;
+        p.z = 0; p.vz = 0; p.isStunned = false; p.stunTimer = 0; p.invincibleTimer = 0;
+        if(p.isManual) p.lastTapTime = Date.now();
       });
 
-      elOverlay.classList.add("show");
-    }
-
-    function hideResults(){
-      elOverlay.classList.remove("show");
-    }
-
-    // --- Export/Import
-    function exportState(){
-      const snapshot = JSON.stringify(state);
-      elExportBox.value = snapshot;
-      try{
-        elExportBox.select();
-        document.execCommand("copy");
-      }catch(e){}
-    }
-
-    function importState(){
-      const raw = (elExportBox.value || "").trim();
-      if(!raw) return;
-      try{
-        const obj = JSON.parse(raw);
-        // basic validation
-        if(!obj || typeof obj !== "object") throw new Error("Invalid JSON");
-        if(!obj.settings || !Array.isArray(obj.teams)) throw new Error("Missing fields");
-        state = obj;
-        // ensure defaults
-        state.settings = Object.assign({
-          title: "Horse Runrun Team Mode",
-          finishLine: 100,
-          stepMin: 4,
-          stepMax: 12,
-          autoRank: true
-        }, state.settings || {});
-        state.teams = (state.teams || []).map(t => ({
-          id: t.id || uid(),
-          name: t.name || "Team",
-          emoji: t.emoji || "🐴",
-          color: t.color || "aqua",
-          members: Array.isArray(t.members) ? t.members : [],
-          distance: Number.isFinite(t.distance) ? t.distance : 0,
-          finishedAtStep: (t.finishedAtStep == null ? null : t.finishedAtStep)
-        }));
-        state.stepCount = Number.isFinite(state.stepCount) ? state.stepCount : 0;
-        state.phase = state.phase || "idle";
-        state.startedAt = state.startedAt || null;
-
-        syncInputsFromState();
-        setPhase(state.phase);
-        renderAll();
-        saveLocal();
-      }catch(e){
-        alert("Import failed: " + e.message);
+      if (currentGameMode !== 'TUG') {
+        grass = [];
+        gameState = 'RACING';
+        broadcast({ type: 'sync_ui', label: 'RUN!', mode: 'mash', infoText: mobileInfo });
+      } else {
+        gameState = 'RACING';
       }
     }
 
-    // --- Local persistence
-    const LS_KEY = "horse_runrun_team_mode_modified_state_v1";
-    function saveLocal(){
-      try{
-        localStorage.setItem(LS_KEY, JSON.stringify(state));
-      }catch(e){}
-    }
-    function loadLocal(){
-      try{
-        const raw = localStorage.getItem(LS_KEY);
-        if(!raw) return false;
-        const obj = JSON.parse(raw);
-        if(!obj || typeof obj !== "object") return false;
-        state = obj;
-        // defaults
-        state.settings = Object.assign({
-          title: "Horse Runrun Team Mode",
-          finishLine: 100,
-          stepMin: 4,
-          stepMax: 12,
-          autoRank: true
-        }, state.settings || {});
-        state.teams = (state.teams || []).map(t => ({
-          id: t.id || uid(),
-          name: t.name || "Team",
-          emoji: t.emoji || "🐴",
-          color: t.color || "aqua",
-          members: Array.isArray(t.members) ? t.members : [],
-          distance: Number.isFinite(t.distance) ? t.distance : 0,
-          finishedAtStep: (t.finishedAtStep == null ? null : t.finishedAtStep)
-        }));
-        state.stepCount = Number.isFinite(state.stepCount) ? state.stepCount : 0;
-        state.phase = state.phase || "idle";
-        state.startedAt = state.startedAt || null;
-        return true;
-      }catch(e){
-        return false;
+    function gameLoop() { updateGameLogic(); draw(); requestAnimationFrame(gameLoop); }
+
+    function updateGameLogic() {
+      if (snowEnabled) spawnSnow();
+
+      const alert = document.getElementById('queue-text');
+      const hud = document.getElementById('hud');
+
+      if (gameState === 'COOLDOWN' && currentGameMode === 'TUG') {
+        ponies.forEach(p => { p.frame++; });
+      }
+
+      if (gameState === 'WAITING_TO_START') {
+        waitTimer--;
+        alert.style.display = 'block';
+        const sec = Math.ceil(waitTimer / 60);
+        alert.innerText = `NEXT ROUND IN ${sec}`;
+        if (sec > 0 && lastBroadcastText !== sec) {
+          broadcast({ type: 'sync_ui', label: `STARTING ${sec}`, mode: 'wait' });
+          lastBroadcastText = sec;
+        }
+        updatePoniesMovement();
+        if (waitTimer <= 0) startCooldown();
+
+      } else if (gameState === 'COOLDOWN') {
+        cooldownTimer--;
+        alert.style.display = 'none';
+
+        if (cooldownTimer > 180) {
+          // show mode name
+        } else {
+          const sec = Math.ceil(cooldownTimer / 60);
+          updateBarText(sec.toString(), '#ffffff');
+          if (cooldownTimer % 60 === 59) triggerFlash();
+          if (sec > 0 && lastBroadcastText !== sec) {
+            broadcast({ type: 'sync_ui', label: sec.toString(), mode: 'wait' });
+            lastBroadcastText = sec;
+          }
+        }
+        if (cooldownTimer <= 0) startRace();
+        if (currentGameMode !== 'TUG') updatePoniesMovement();
+
+      } else if (gameState === 'RACING') {
+        if (ponyQueue.length > 0) {
+          alert.style.display = 'block';
+          alert.innerText = `${ponyQueue.length} WAITING NEXT ROUND`;
+        } else {
+          alert.style.display = 'none';
+        }
+
+        if (currentGameMode === 'TUG') {
+          ponies.forEach(p => {
+            if (!p.playerUUID && Math.random() < 0.015) {
+              if (p.team === 1) tugValue = Math.min(100, tugValue + 1.0);
+              else tugValue = Math.max(0, tugValue - 1.0);
+              p.isWalkAnimating = true;
+              p.pullOffset = (p.team === 1 ? 10 : -10);
+            }
+          });
+
+          const bZone = document.getElementById('tug-blue-zone');
+          if(bZone) bZone.style.width = tugValue + '%';
+          const rZone = document.getElementById('tug-red-zone');
+          if(rZone) rZone.style.width = (100 - tugValue) + '%';
+
+          // ✅ 仅在开关开启时才自动居中，并且是平滑（不瞬移）
+          if (maybeAutoCenterTug(true)) {
+            applyLayout(false);
+          }
+
+          const battleFront = gameW * (tugValue / 100);
+          spawnBattleSparks(battleFront);
+
+          ponies.forEach(p => {
+            const teamMembers = ponies.filter(tm => tm.team === p.team).sort((a,b) => a.id.localeCompare(b.id));
+            const myIndex = teamMembers.findIndex(tm => tm.id === p.id);
+
+            let basePositionX;
+            if (p.team === 1) basePositionX = battleFront - 80 - (myIndex * 45);
+            else basePositionX = battleFront + 80 + (myIndex * 45);
+
+            const desiredX = basePositionX + (p.pullOffset || 0);
+
+            const smoothFactor = 0.15;
+            p.x = p.x + (desiredX - p.x) * smoothFactor;
+
+            if (p.pullOffset) p.pullOffset *= 0.8;
+            if (Math.abs(p.pullOffset) < 1) p.pullOffset = 0;
+
+            if (Math.abs(desiredX - p.x) < 1 && !p.isManual) p.isWalkAnimating = false;
+            else p.isWalkAnimating = true;
+          });
+
+          if (tugValue >= 95) endTugWar(1);
+          else if (tugValue <= 5) endTugWar(-1);
+
+        } else if (currentGameMode === 'RED_LIGHT') {
+          redLightTimer--;
+          if (redLightTimer <= 0) {
+            const screen = document.getElementById('game-screen');
+            screen.className = '';
+            if (lightState === 'GREEN') {
+              lightState = 'YELLOW';
+              redLightTimer = 30;
+              screen.classList.add('bg-yellow');
+              updateBarText("STOP?", "#ffb300");
+              setBarVisibility(true);
+              playSignalSound('YELLOW');
+            } else if (lightState === 'YELLOW') {
+              lightState = 'RED';
+              redLightTimer = 60 + Math.random() * 90;
+              screen.classList.add('bg-red');
+              updateBarText("STOP!", "#ff5252"); setBarVisibility(true);
+              playSignalSound('RED');
+            } else if (lightState === 'RED') {
+              lightState = 'GREEN';
+              redLightTimer = (100 + Math.random() * 150) * 0.8;
+              screen.classList.add('bg-green');
+              updateBarText("GO!", "#69f0ae");
+              playSignalSound('GREEN');
+              setTimeout(() => { if (lightState === 'GREEN') setBarVisibility(false); }, 500);
+            }
+          }
+          updatePoniesMovement();
+          checkRaceEnd();
+        } else {
+          updatePoniesMovement();
+          checkRaceEnd();
+        }
+
+      } else if (gameState === 'ROAMING') {
+        hud.style.display = 'block';
+        hud.innerText = "NOWHERE TO RUN";
+        document.getElementById('game-screen').className = '';
+        if (ponyQueue.length > 0) {
+          alert.style.display = 'block';
+          alert.innerText = `${ponyQueue.length} WAITING NEXT ROUND`;
+        } else {
+          alert.style.display = 'none';
+        }
+        updatePoniesMovement();
+      }
+
+      const active = ponies.filter(p => p.state === 'racing');
+      if (active.length === 0 && Math.random() < 0.2) {
+        const segmentSize = 500;
+        const totalSegments = Math.ceil(gameW / segmentSize);
+        for(let i=0; i<totalSegments; i++) {
+          const startX = i * segmentSize;
+          const endX = (i + 1) * segmentSize;
+          const count = grass.filter(g => g.x >= startX && g.x < endX).length;
+          if (count < 2 && Math.random() < 0.05) {
+            grass.push({ x: startX + Math.random() * segmentSize, y: 20 + Math.random() * (GAME_H - 40) });
+          }
+        }
       }
     }
 
-    // --- Render all
-    function renderAll(){
-      syncInputsFromState();
-      renderTeamsList();
-      renderTracks();
-      elStatusInfo.textContent = `${state.teams.length} teams · step ${state.stepCount}`;
-      elStageTitle.textContent = state.settings.title || "Race Arena";
-      elFinishLabel.textContent = String(state.settings.finishLine);
+    function endTugWar(winnerTeam) {
+      gameState = 'FINISHED';
+      const totalPlayers = ponies.length;
+      const eliminationCount = Math.max(0, totalPlayers - 10);
+      let losers = ponies.filter(p => p.team !== winnerTeam);
+      losers.sort((a, b) => a.tapCount - b.tapCount);
+      const toExplode = new Set(losers.slice(0, eliminationCount).map(p => p.id));
+      let mvpPony = null;
+      let maxTaps = -1;
+
+      ponies.forEach(p => {
+        p.hasCrown = false;
+        p.isStreak = false;
+
+        if (toExplode.has(p.id)) {
+          explode(p);
+        } else {
+          p.state = 'roaming';
+          p.targetX = null;
+          p.targetY = null;
+          p.timer = 0;
+          if (p.team === winnerTeam) {
+            if (p.tapCount > maxTaps) {
+              maxTaps = p.tapCount;
+              mvpPony = p;
+            }
+          }
+        }
+      });
+
+      if (mvpPony) {
+        mvpPony.hasCrown = true;
+        mvpPony.isStreak = true;
+      }
+
+      updateBarText("WIN", (winnerTeam === 1) ? "#2979ff" : "#ff0000");
+      setBarVisibility(true);
+
+      const tugLayer = document.getElementById('tug-layer');
+      if(tugLayer) tugLayer.style.display = 'none';
+
+      setTimeout(() => {
+        if (ponyQueue.length > 0) {
+          gameState = 'WAITING_TO_START';
+          waitTimer = 180;
+        } else {
+          gameState = 'ROAMING';
+          setBarVisibility(false);
+          layout.x = 0;
+          applyLayout(false);
+          broadcast({ type: 'sync_ui', label: 'DONE', mode: 'wait' });
+
+          setTimeout(() => {
+            if (gameState === 'ROAMING') {
+              broadcast({ type: 'sync_ui', label: 'START RACE', mode: 'start' });
+            }
+          }, 2000);
+        }
+      }, 4000);
     }
 
-    // --- Event wiring
-    elBtnAddTeam.addEventListener("click", () => {
-      const editingId = elBtnAddTeam.dataset.editing;
-      if(editingId){
-        saveEditedTeam(editingId);
-      }else{
-        addTeamFromForm();
+    function checkRaceEnd() {
+      const finished = ponies.filter(p => p.state === 'finished');
+      let raceOverTrigger = false;
+      if (ponies.length > 10) {
+        if (finished.length >= 10) raceOverTrigger = true;
+      } else {
+        if (ponies.length > 0 && finished.length === ponies.length) raceOverTrigger = true;
       }
-    });
 
-    elBtnClearTeams.addEventListener("click", () => {
-      if(confirm("Clear all teams?")) clearAllTeams();
-    });
+      if (raceOverTrigger) {
+        if (ponies.length > 10) {
+          const losers = ponies.filter(p => p.state === 'racing');
+          losers.forEach(p => explode(p));
+          ponies = ponies.filter(p => p.state === 'finished');
+        }
 
-    elBtnStart.addEventListener("click", () => {
-      if(state.teams.length === 0){
-        alert("Please add at least one team.");
+        ponies.forEach(p => {
+          p.state = 'roaming';
+          p.timer = 0;
+          p.targetX = null;
+          p.targetY = null;
+          p.isWalkAnimating = false;
+          p.isTurbo = false;
+          p.turboCharge = 0;
+        });
+
+        if (ponyQueue.length > 0) {
+          gameState = 'WAITING_TO_START';
+          waitTimer = 180;
+        } else {
+          gameState = 'ROAMING';
+          broadcast({ type: 'sync_ui', label: 'DONE', mode: 'wait' });
+          setTimeout(() => {
+            if (gameState === 'ROAMING') broadcast({ type: 'sync_ui', label: 'START RACE', mode: 'start' });
+          }, 3000);
+        }
+
+        document.getElementById('game-screen').className = '';
+        setBarVisibility(false);
+      }
+    }
+
+    function spawnSnow() {
+      const snowLayer = document.getElementById('layer-snow');
+      const count = Math.random() < 0.5 ? 1 : 2;
+      for(let i=0; i<count; i++) {
+        const el = document.createElement('div');
+        el.className = 'snowflake';
+        el.style.left = (Math.random() * gameW) + 'px';
+        const size = 2 + Math.random() * 3;
+        el.style.width = size + 'px';
+        el.style.height = size + 'px';
+        el.style.opacity = 0.4 + Math.random() * 0.6;
+        const duration = 2000 + Math.random() * 2000;
+        el.style.animationDuration = duration + 'ms';
+        snowLayer.appendChild(el);
+        setTimeout(() => el.remove(), duration + 100);
+      }
+    }
+
+    function spawnTrail(p) {
+      const fxLayer = document.getElementById('layer-fx');
+      const count = Math.random() < 0.5 ? 1 : 2;
+      for (let i = 0; i < count; i++) {
+        const el = document.createElement('div');
+        el.className = 'trail-segment';
+        el.style.left = (p.x - 20 + Math.random() * 10) + 'px';
+        el.style.top = (p.y + 15 + Math.random() * 15) + 'px';
+        el.style.background = p.color;
+        el.style.boxShadow = `0 0 0px ${p.color}`;
+        fxLayer.appendChild(el);
+        setTimeout(() => el.remove(), 400);
+      }
+    }
+
+    function updatePoniesMovement() {
+      let winnerFoundThisFrame = false;
+      const finishedCount = ponies.filter(p => p.state === 'finished').length;
+
+      ponies.forEach(p => {
+        p.frame++;
+        p.isWalkAnimating = false;
+        p.isTurbo = false;
+
+        if (p.manualAnimTimer > 0) p.manualAnimTimer--;
+        p.turboCharge = Math.max(0, p.turboCharge - 1);
+
+        if (p.invincibleTimer > 0) p.invincibleTimer--;
+
+        if (p.state === 'ready') {
+          if (currentGameMode !== 'TUG') p.x = 20;
+          return;
+        }
+
+        if (p.state === 'racing') {
+          if (p.isStunned) {
+            p.stunTimer--;
+            if (p.stunTimer <= 0) p.isStunned = false;
+            p.isWalkAnimating = false;
+            if (p.manualSpeed < 0) { p.x += p.manualSpeed; p.manualSpeed *= 0.9; }
+          } else {
+            if (p.playerUUID) {
+              if (p.isManual) {
+                if (Date.now() - p.lastTapTime > 10000) {
+                  p.isManual = false;
+                  if (!p.name.includes("(BOT)")) p.name += " (BOT)";
+                }
+              }
+            }
+
+            if (p.isManual) {
+              p.manualSpeed *= 0.95;
+              if (p.manualSpeed < 0.1) p.manualSpeed = 0;
+              p.x += p.manualSpeed;
+              p.isWalkAnimating = p.manualSpeed > 0.1;
+            } else {
+              if (currentGameMode === 'RED_LIGHT' && lightState === 'RED') {
+                if (Math.random() < 0.02) p.x += 2;
+              } else {
+                p.x += p.speed * (0.9 + Math.random() * 0.2);
+                p.isWalkAnimating = true;
+                if (currentGameMode === 'HURDLE' && !p.isJumping) {
+                  const nearestObs = obstacles.find(o => o.x > p.x && o.x < p.x + 150);
+                  if (nearestObs && Math.random() < 0.15) {
+                    p.isJumping = true; p.vz = 12;
+                  }
+                }
+              }
+            }
+
+            if (p.isJumping) {
+              p.z += p.vz;
+              p.vz -= 0.8;
+              if (p.z <= 0) {
+                p.z = 0; p.vz = 0; p.isJumping = false;
+              }
+            }
+
+            if (p.invincibleTimer <= 0) {
+              if (currentGameMode === 'HURDLE') {
+                obstacles.forEach(obs => {
+                  if (p.x + 40 > obs.x && p.x < obs.x + obs.width) {
+                    if (p.z < 20) {
+                      p.isStunned = true;
+                      p.stunTimer = 30;
+                      p.invincibleTimer = 90;
+                      p.manualSpeed = 0;
+                      p.x = obs.x - 10;
+                      triggerPonyEmoji(p.playerUUID, 'POOP');
+                    }
+                  }
+                });
+              }
+            }
+
+            if (p.turboCharge > 60 && Math.random() < 0.4) spawnTrail(p);
+            if (p.turboCharge > 30) p.isTurbo = true;
+
+            p.facing = 1;
+
+            if (p.x >= getFinishX()) {
+              if (p.state === 'racing') {
+                p.state = 'finished';
+                p.isTurbo = false;
+                if (p.playerUUID) broadcast({ type: 'player_finished', uuid: p.playerUUID });
+
+                if (finishedCount === 0 && !winnerFoundThisFrame && gameState === 'RACING') {
+                  winnerFoundThisFrame = true;
+                  if (p.hasCrown) p.isStreak = true;
+                  else { p.hasCrown = true; p.isStreak = false; }
+                  ponies.forEach(o => { if(o.id !== p.id) { o.hasCrown = false; o.isStreak = false; }});
+                }
+              }
+            }
+          }
+        } else if (p.state === 'finished') {
+          p.z = 0;
+          if (p.x < gameW - 50) { p.x += 0.8; p.finishedWalking = true; p.isWalkAnimating = true; }
+          else { p.finishedWalking = false; aiBehavior(p, true); }
+        } else {
+          p.finishedWalking = false;
+          aiBehavior(p, false);
+        }
+
+        p.x = Math.max(0, Math.min(gameW - 38, p.x));
+        p.y = Math.max(p.hasCrown ? 35 : 20, Math.min(GAME_H - 44 - 6, p.y));
+      });
+    }
+
+    function aiBehavior(p, restrictFinish) {
+      const maxY = GAME_H - 44;
+      const minY = p.hasCrown ? 35 : 20;
+
+      if (p.state === 'roaming' || p.state === 'finished') {
+        for(let i=0; i<grass.length; i++) {
+          const g = grass[i];
+          if (Math.abs(g.x - p.x) < 50 && Math.abs(g.y - p.y) < 50) {
+            p.state = 'eating';
+            p.timer = 50;
+            grass.splice(i, 1);
+            p.targetX = null;
+            p.targetY = null;
+            return;
+          }
+        }
+
+        if (p.timer-- <= 0) {
+          const action = Math.random();
+          if (action < 0.3) {
+            p.targetX = (p.x < gameW / 2) ? gameW - 100 - Math.random() * 400 : 50 + Math.random() * 400;
+            p.targetY = minY + Math.random() * (maxY - minY);
+            p.timer = 400 + Math.random() * 400;
+            p.roamSpeed = 2.0;
+          } else if (action < 0.8) {
+            p.targetX = p.x + (Math.random() - 0.5) * 600;
+            p.targetY = minY + Math.random() * (maxY - minY);
+            p.timer = 100 + Math.random() * 200;
+            p.roamSpeed = 0.8;
+          } else {
+            p.targetX = null; p.targetY = null;
+            p.timer = 60 + Math.random() * 120;
+            p.roamSpeed = 0;
+          }
+        }
+
+        if (p.targetX !== null && p.targetY !== null) {
+          const dx = p.targetX - p.x;
+          const dy = p.targetY - p.y;
+          const dist = Math.sqrt(dx*dx + dy*dy);
+          if (dist < 5) {
+            p.targetX = null;
+            p.targetY = null;
+            p.timer = 0;
+          } else {
+            const speed = p.roamSpeed || 0.5;
+            p.x += (dx / dist) * speed;
+            p.y += (dy / dist) * speed;
+            p.facing = Math.sign(dx) || 1;
+            p.isWalkAnimating = true;
+          }
+        }
+      } else if (p.state === 'eating') {
+        if (p.timer-- <= 0) p.state = 'roaming';
+      }
+    }
+
+    function explode(p) {
+      const fx = document.getElementById('layer-fx');
+      for(let i=0; i<20; i++) {
+        const el = document.createElement('div');
+        el.className = 'explosion';
+        el.style.left = (p.x + 19) + 'px';
+        el.style.top = (p.y + 19) + 'px';
+        el.style.background = p.color;
+        fx.appendChild(el);
+
+        const angle = Math.random() * 6.28;
+        const spd = 3 + Math.random() * 5;
+        let vx = Math.cos(angle) * spd;
+        let vy = Math.sin(angle) * spd;
+        let life = 40;
+
+        const tick = () => {
+          if (life-- <= 0) return el.remove();
+          el.style.left = (parseFloat(el.style.left) + vx) + 'px';
+          el.style.top = (parseFloat(el.style.top) + vy) + 'px';
+          el.style.opacity = life/40;
+          requestAnimationFrame(tick);
+        };
+        tick();
+      }
+
+      const grassCount = Math.floor(Math.random() * 3) + 1;
+      for(let i=0; i<grassCount; i++) {
+        grass.push({ x: p.x + (Math.random()-0.5) * 60, y: p.y + (Math.random()-0.5) * 40 });
+      }
+
+      ponies = ponies.filter(target => target.id !== p.id);
+
+      if (p.playerUUID) broadcast({ type: 'eliminated', uuid: p.playerUUID });
+    }
+
+    function draw() {
+      const grassL = document.getElementById('layer-grass');
+      let htmlContent = grass.map(g => `<div class="grass" style="left:${g.x}px; top:${g.y}px"></div>`).join('');
+      if (gameState === 'RACING' || gameState === 'COOLDOWN') {
+        htmlContent += obstacles.map(o => `<div class="obstacle" style="left:${o.x}px; height:30px;"></div>`).join('');
+      }
+      grassL.innerHTML = htmlContent;
+
+      const ponyL = document.getElementById('layer-pony');
+      const nodes = Array.from(ponyL.children);
+      const ids = new Set(ponies.map(p => p.id));
+      nodes.forEach(n => { if(!ids.has(n.id)) n.remove(); });
+
+      ponies.forEach(p => {
+        let el = document.getElementById(p.id);
+        if (!el) {
+          el = document.createElement('div');
+          el.id = p.id;
+          el.className = 'entity';
+          el.innerHTML = `
+            <div class="aura"></div>
+            <div class="crown-container" style="display: none;">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="#facc15" stroke="#facc15" stroke-width="2">
+                <path d="m2 4 3 12h14l3-12-6 7-4-7-4 7-6-7zm3 16h14"></path>
+              </svg>
+            </div>
+            <div class="name-tag">${p.name}</div>
+            <div class="p-grid" style="display:grid; grid-template-columns:repeat(11,1fr); width:100%; height:100%;"></div>
+          `;
+          ponyL.appendChild(el);
+        }
+
+        el.style.transform = `translate(${p.x}px, ${p.y - p.z}px) scale(1.1)`;
+        el.style.zIndex = Math.floor(p.y);
+
+        if (p.isStunned) {
+          el.style.filter = "grayscale(100%) opacity(0.5)";
+        } else if (p.invincibleTimer > 0) {
+          el.style.filter = (Math.floor(p.invincibleTimer / 5) % 2 === 0) ? "opacity(0.3)" : "opacity(0.8)";
+        } else {
+          el.style.filter = "none";
+        }
+
+        const crownC = el.querySelector('.crown-container');
+        crownC.style.display = p.hasCrown ? 'flex' : 'none';
+
+        el.querySelector('.aura').style.display = p.isStreak ? 'block' : 'none';
+        el.querySelector('.name-tag').style.color = p.hasCrown ? '#facc15' : p.color;
+
+        const gridEl = el.querySelector('.p-grid');
+        if (p.isTurbo) {
+          gridEl.classList.add('trail-active');
+          gridEl.style.setProperty('--trail-c', p.color);
+        } else {
+          gridEl.classList.remove('trail-active');
+          gridEl.style.removeProperty('--trail-c');
+        }
+
+        let frameStep = 0;
+        if (p.isManual && p.state === 'racing') frameStep = (p.manualAnimTimer > 0) ? 1 : 0;
+        else if (p.isWalkAnimating) frameStep = Math.floor(p.frame / 5) % 2;
+
+        gridEl.style.transform = `scaleX(${p.facing || 1})`;
+
+        let html = '';
+        for(let y=0; y<11; y++) {
+          let row = p.pixels[y];
+          if (p.state === 'eating') {
+            if (y <= 5) row = (y >= 2) ? p.pixels[y - 2] : [0,0,0,0,0,0,0,0,0,0,0];
+          } else if (frameStep === 1 && y > 8) {
+            row = [row[1], row[2], row[3], row[4], row[5], row[6], row[7], row[8], row[9], row[10], row[0]];
+          }
+          for(let x=0; x<11; x++) {
+            if (row[x]) html += `<div style="background:${p.color}; width:100%; height:100%; grid-column:${x+1}; grid-row:${y+1}"></div>`;
+          }
+        }
+        gridEl.innerHTML = html;
+      });
+    }
+
+    function initMobile() {
+      installMobileIOSGuards();
+      playerUUID = localStorage.getItem('horse_uuid');
+      if (!playerUUID) {
+        playerUUID = 'user_' + Math.random().toString(36).substr(2, 9);
+        localStorage.setItem('horse_uuid', playerUUID);
+      }
+
+      initEditor('m-grid', 'm-colors', mobileGrid);
+
+      const titleEl = document.getElementById('m-title');
+      if (titleEl) {
+        titleEl.addEventListener('click', () => {
+          mTitleTapCount++;
+          if (mTitleTapTimer) clearTimeout(mTitleTapTimer);
+          mTitleTapTimer = setTimeout(() => { mTitleTapCount = 0; }, 1200);
+
+          if (mTitleTapCount >= 5) {
+            mTitleTapCount = 0;
+            openMobileAdmin();
+            vibrate(30);
+          }
+        });
+      }
+
+      const applyBtn = document.getElementById('m-admin-apply');
+      const addBotBtn = document.getElementById('m-admin-addbot');
+      const backBtn = document.getElementById('m-admin-back');
+      const snowCb = document.getElementById('m-admin-snow');
+      const snowLbl = document.getElementById('m-admin-snow-label');
+      const modeSel = document.getElementById('m-admin-mode');
+
+      const borderCb = document.getElementById('m-admin-border');
+      const borderLbl = document.getElementById('m-admin-border-label');
+      const borderW = document.getElementById('m-admin-borderw');
+
+      const tugCb = document.getElementById('m-admin-tugcenter');
+      const tugLbl = document.getElementById('m-admin-tugcenter-label');
+
+      if (applyBtn) {
+        applyBtn.addEventListener('click', () => {
+          const z = parseFloat(document.getElementById('m-admin-zoom').value);
+          const st = parseFloat(document.getElementById('m-admin-stretch').value);
+          const x = parseFloat(document.getElementById('m-admin-x').value);
+          const y = parseFloat(document.getElementById('m-admin-y').value);
+          const len = parseFloat(document.getElementById('m-admin-len').value);
+
+          sendHostControl({ action: 'set_layout', zoom: z, stretch: st, x: x, y: y });
+          sendHostControl({ action: 'set_length', length: len });
+
+          if (tugCb) sendHostControl({ action: 'set_tug_center', enabled: tugCb.checked });
+
+          vibrate(10);
+        });
+      }
+      if (addBotBtn) {
+        addBotBtn.addEventListener('click', () => {
+          sendHostControl({ action: 'add_bot' });
+          vibrate(10);
+        });
+      }
+      if (backBtn) {
+        backBtn.addEventListener('click', () => {
+          closeMobileAdmin();
+          vibrate(10);
+        });
+      }
+      if (snowCb) {
+        snowCb.addEventListener('change', () => {
+          const enabled = snowCb.checked;
+          if (snowLbl) snowLbl.textContent = enabled ? 'ON' : 'OFF';
+          sendHostControl({ action: 'set_snow', enabled });
+          vibrate(10);
+        });
+      }
+      if (modeSel) {
+        modeSel.addEventListener('change', () => {
+          sendHostControl({ action: 'set_mode', mode: modeSel.value });
+          vibrate(10);
+        });
+      }
+
+      if (borderCb) {
+        borderCb.addEventListener('change', () => {
+          const enabled = borderCb.checked;
+          if (borderLbl) borderLbl.textContent = enabled ? 'ON' : 'OFF';
+          const w = borderW ? parseFloat(borderW.value) : 2;
+          sendHostControl({ action: 'set_border', enabled, width: w });
+          vibrate(10);
+        });
+      }
+      if (borderW) {
+        borderW.addEventListener('change', () => {
+          const w = parseFloat(borderW.value);
+          const enabled = borderCb ? borderCb.checked : true;
+          sendHostControl({ action: 'set_border', enabled, width: w });
+          vibrate(10);
+        });
+      }
+
+      if (tugCb) {
+        tugCb.addEventListener('change', () => {
+          const enabled = tugCb.checked;
+          if (tugLbl) tugLbl.textContent = enabled ? 'ON' : 'OFF';
+          sendHostControl({ action: 'set_tug_center', enabled });
+          vibrate(10);
+        });
+      }
+
+      try {
+        peer = new Peer(null, PEER_CONFIG);
+        peer.on('open', () => {
+          conn = peer.connect(new URLSearchParams(window.location.search).get('host'));
+          conn.on('open', () => {
+            document.getElementById('m-status').innerText = "CONNECTED";
+            document.getElementById('m-status').style.color = "#69f0ae";
+            conn.send({ type: 'check_reconnect', uuid: playerUUID });
+            conn.send({ type: 'request_settings' });
+          });
+
+          conn.on('data', data => {
+            if (data.type === 'settings') {
+              const z = (typeof data.zoom === 'number') ? data.zoom : 100;
+              const st = (typeof data.stretch === 'number') ? data.stretch : 100;
+              const x = (typeof data.x === 'number') ? data.x : 0;
+              const y = (typeof data.y === 'number') ? data.y : 0;
+              const len = (typeof data.length === 'number') ? data.length : 3400;
+
+              const mode = data.mode || 'CLASSIC';
+              const sn = !!data.snowEnabled;
+
+              const ben = (data.borderEnabled !== undefined) ? !!data.borderEnabled : true;
+              const bw = (typeof data.borderWidth === 'number') ? data.borderWidth : 2;
+
+              const tac = !!data.tugAutoCenter;
+
+              const zEl = document.getElementById('m-admin-zoom');
+              const stEl = document.getElementById('m-admin-stretch');
+              const xEl = document.getElementById('m-admin-x');
+              const yEl = document.getElementById('m-admin-y');
+              const lenEl = document.getElementById('m-admin-len');
+
+              const tEl = document.getElementById('m-admin-tugcenter');
+              const tLbl = document.getElementById('m-admin-tugcenter-label');
+
+              const mEl = document.getElementById('m-admin-mode');
+              const sEl = document.getElementById('m-admin-snow');
+              const sLbl = document.getElementById('m-admin-snow-label');
+
+              const bEl = document.getElementById('m-admin-border');
+              const bLbl = document.getElementById('m-admin-border-label');
+              const bwEl = document.getElementById('m-admin-borderw');
+
+              if (zEl) zEl.value = Number(z).toFixed(1);
+              if (stEl) stEl.value = Number(st).toFixed(1);
+              if (xEl) xEl.value = Number(x).toFixed(1);
+              if (yEl) yEl.value = Number(y).toFixed(1);
+              if (lenEl) lenEl.value = String(Math.round(len));
+
+              if (tEl) tEl.checked = tac;
+              if (tLbl) tLbl.textContent = tac ? 'ON' : 'OFF';
+
+              if (mEl) mEl.value = mode;
+              if (sEl) sEl.checked = sn;
+              if (sLbl) sLbl.textContent = sn ? 'ON' : 'OFF';
+
+              if (bEl) bEl.checked = ben;
+              if (bLbl) bLbl.textContent = ben ? 'ON' : 'OFF';
+              if (bwEl) bwEl.value = String(bw);
+
+              return;
+            }
+
+            if (data.type === 'reconnect_success') {
+              document.getElementById('m-editor-ui').style.display = 'none';
+              document.getElementById('m-controller').style.display = 'flex';
+              forceBlur();
+              // Motion events/listeners can get dropped after leaving/re-entering; ask for a quick tap to re-enable.
+              showMotionResumeHint();
+            }
+            else if (data.type === 'sync_ui') {
+              if (mobileBtnState === 'dead') return;
+
+              const btn = document.getElementById('m-btn');
+              const info = document.getElementById('m-info');
+              const modeWrapper = document.getElementById('m-mode-wrapper');
+
+              mobileBtnState = data.mode;
+              btn.className = 'push-btn';
+
+              modeWrapper.style.display = 'none';
+
+              if (data.mode === 'tug') {
+                btn.classList.add('btn-mash');
+                btn.innerText = "PULL!";
+
+                if (data.teamMap && data.teamMap[playerUUID]) {
+                  const myTeam = data.teamMap[playerUUID];
+                  info.innerText = `TEAM ${myTeam}`;
+                  info.style.color = (myTeam === 'RED') ? '#ff5252' : '#2979ff';
+                  btn.classList.add(myTeam === 'RED' ? 'btn-team-red' : 'btn-team-blue');
+                } else {
+                  info.innerText = "SPECTATING";
+                }
+              }
+              else if (data.mode === 'wait') {
+                btn.classList.add('btn-wait');
+                btn.innerText = data.label;
+                info.innerText = "GET READY...";
+                info.style.color = "#888";
+              }
+              else if (data.mode === 'mash') {
+                btn.classList.add('btn-mash');
+                btn.innerText = "RUN";
+                info.innerText = data.infoText || "TAP TO RUN";
+                randomizeMusic();
+              }
+              else if (data.mode === 'start') {
+                btn.classList.add('btn-start');
+                btn.innerText = data.label;
+                info.innerText = "RACE FINISHED";
+                modeWrapper.style.display = 'flex';
+              }
+            }
+            else if (data.type === 'eliminated' && data.uuid === playerUUID) {
+              const btn = document.getElementById('m-btn');
+              const info = document.getElementById('m-info');
+              mobileBtnState = 'dead';
+              btn.className = 'push-btn btn-dead';
+              btn.innerText = "CREATE\nAGAIN";
+              info.innerText = "ELIMINATED";
+              document.getElementById('m-mode-wrapper').style.display = 'none';
+              vibrate([100, 50, 100]);
+            }
+            else if (data.type === 'player_finished' && data.uuid === playerUUID) {
+              mobileBtnState = 'finished';
+              const btn = document.getElementById('m-btn');
+              btn.className = 'push-btn btn-wait';
+              btn.innerText = "DONE";
+              document.getElementById('m-info').innerText = "WAITING...";
+              document.getElementById('m-mode-wrapper').style.display = 'none';
+              vibrate([200]);
+            }
+          });
+        });
+      } catch(e) { console.error(e); }
+    }
+
+
+    function showMotionResumeHint() {
+      // If already attached, no need to bother
+      if (motionAttached) return;
+
+      const btn = document.getElementById('m-btn');
+      if (!btn) return;
+
+      // One-tap enable. Uses a user gesture so iOS permission API is allowed.
+      const oldText = btn.innerText;
+      const oldClass = btn.className;
+
+      btn.className = 'push-btn btn-wait';
+      btn.innerText = "TAP TO\nRE-ENABLE\nJUMP";
+
+      const once = async (e) => {
+        try { e && e.preventDefault && e.preventDefault(); } catch(_) {}
+        await enableMotionFromGesture();
+        btn.innerText = oldText;
+        btn.className = oldClass;
+      };
+
+      // Use both touchend and click for compatibility
+      btn.addEventListener('touchend', once, { passive: false, once: true });
+      btn.addEventListener('click', once, { once: true });
+    }
+
+    function handleMotion(event) {
+      const acc = event.acceleration;
+      if (!acc) return;
+      const magnitude = Math.sqrt(acc.x*acc.x + acc.y*acc.y + acc.z*acc.z);
+      if (magnitude > 15) {
+        const now = Date.now();
+        if (now - lastShakeTime > 500) {
+          lastShakeTime = now;
+          if(conn) conn.send({ type: 'jump', uuid: playerUUID });
+          vibrate(200);
+        }
+      }
+    }
+
+    const mBtn = document.getElementById('m-btn');
+    let touchStartY = 0;
+
+    mBtn.addEventListener('touchstart', (e) => {
+      forceBlur();
+      if (!motionAttached) { enableMotionFromGesture(); }
+
+      if (mobileBtnState === 'dead') { resetMobile(); return; }
+      if (mobileBtnState === 'finished') return;
+      if (mobileBtnState === 'start') {
+        const selectedMode = document.getElementById('m-mode-select').value;
+        if(conn) conn.send({ type: 'force_start', mode: selectedMode });
+        vibrate(50);
         return;
       }
-      startRace();
-    });
+      if (mobileBtnState !== 'mash' && mobileBtnState !== 'tug') return;
 
-    elBtnAdvance.addEventListener("click", () => {
-      if(state.phase !== "racing"){
-        alert("Start the race first.");
-        return;
+      e.preventDefault();
+      touchStartY = e.changedTouches[0].clientY;
+      mBtn.style.transform = 'scale(0.95)';
+    }, {passive: false});
+
+    mBtn.addEventListener('touchend', (e) => {
+      if (mobileBtnState !== 'mash' && mobileBtnState !== 'tug') return;
+      e.preventDefault();
+      mBtn.style.transform = 'scale(1)';
+
+      const touchEndY = e.changedTouches[0].clientY;
+      const diffY = touchStartY - touchEndY;
+
+      if (swipeJumpEnabled && diffY > 50) {
+        if(conn) conn.send({ type: 'jump', uuid: playerUUID });
+        vibrate(100);
+      } else {
+        if(conn) conn.send({ type: 'tap', uuid: playerUUID });
+        initAudio(); playNextNote();
+        vibrate(15);
       }
-      advanceStep();
     });
 
-    elBtnFinish.addEventListener("click", () => {
-      if(state.phase === "idle"){
-        alert("Start the race first.");
-        return;
+    function sendMobile() {
+      if(!conn) return alert("Not Connected!");
+      const nameInput = document.getElementById('m-name');
+      let name = nameInput.value.trim().replace(/[^a-zA-Z0-9]/g, '');
+      if (!name) name = "PLAYER";
+      name = name.toUpperCase();
+
+      let hasPixels = false;
+      for(let r=0; r<11; r++) {
+        for(let c=0; c<11; c++) {
+          if (mobileGrid[r][c] === 1) { hasPixels = true; break; }
+        }
+        if(hasPixels) break;
       }
-      finishRace("Force-finished by host.");
-    });
+      if (!hasPixels) { alert("CANVAS IS EMPTY"); return; }
 
-    elBtnExport.addEventListener("click", exportState);
-    elBtnImport.addEventListener("click", importState);
+      initAudio();
+      randomizeMusic();
 
-    elBtnCloseOverlay.addEventListener("click", hideResults);
-    elOverlay.addEventListener("click", (e) => {
-      if(e.target === elOverlay) hideResults();
-    });
+      // ✅ Enable motion (jump) using a user gesture (this button click)
+      enableMotionFromGesture();
 
-    // input changes
-    elTitle.addEventListener("input", () => {
-      state.settings.title = (elTitle.value || "").trim();
-      elStageTitle.textContent = state.settings.title || "Race Arena";
-      saveLocal();
-    });
-    elFinish.addEventListener("input", () => {
-      applySettingsFromInputs();
-      renderTracks();
-      saveLocal();
-    });
-    elStepMin.addEventListener("input", () => { applySettingsFromInputs(); saveLocal(); });
-    elStepMax.addEventListener("input", () => { applySettingsFromInputs(); saveLocal(); });
+      conn.send({ type: 'spawn', payload: { name: name, pixels: mobileGrid, color: selectedColor, uuid: playerUUID } });
+      document.getElementById('m-editor-ui').style.display = 'none';
+      document.getElementById('m-controller').style.display = 'flex';
+      forceBlur();
+    }
 
-    elAutoRank.addEventListener("click", () => {
-      state.settings.autoRank = !state.settings.autoRank;
-      elAutoRank.classList.toggle("on", state.settings.autoRank);
-      elAutoRank.setAttribute("aria-checked", state.settings.autoRank);
-      renderTracks();
-      saveLocal();
-    });
+    function initAudio() {
+      if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+      if (audioCtx.state === 'suspended') audioCtx.resume();
+    }
 
-    // window resize -> reposition horses
-    window.addEventListener("resize", () => {
-      // re-render tracks for positions
-      renderTracks();
-    });
+    function triggerPonyEmoji(uuid, emojiType) {
+      const pony = ponies.find(p => p.playerUUID === uuid);
+      if (!pony) return;
+      const pEl = document.getElementById(pony.id);
+      if (!pEl) return;
 
-    // --- boot
-    (function init(){
-      // pretend "connected" badge
-      $("#connText").textContent = "Local";
-      $("#connDot").classList.add("good");
+      let container;
+      if (emojiType === 'FACE') {
+        container = document.createElement('div');
+        container.className = 'pop-text';
+        container.innerText = "?";
+        container.style.color = pony.color;
+      } else {
+        container = document.createElement('div');
+        container.className = 'pixel-emoji-container';
+        container.appendChild(createPixelIcon(emojiType, 2, pony.color));
+      }
 
-      const loaded = loadLocal();
-      syncInputsFromState();
-      setPhase(state.phase || "idle");
-      renderAll();
-    })();
+      pEl.appendChild(container);
 
+      if (audioCtx && audioCtx.state === 'running') {
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(800, audioCtx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1200, audioCtx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.05, audioCtx.currentTime);
+        gain.gain.linearRampToValueAtTime(0, audioCtx.currentTime + 0.1);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + 0.1);
+      }
+
+      setTimeout(() => container.remove(), 2500);
+    }
+
+    function sendEmoji(type) {
+      if(!conn) return;
+      conn.send({ type: 'emoji', uuid: playerUUID, content: type });
+      const btn = event.currentTarget;
+      btn.style.transform = 'scale(0.8)';
+      setTimeout(() => btn.style.transform = 'scale(1)', 100);
+      vibrate(10);
+    }
+
+    function resetMobile() {
+      document.getElementById('m-controller').style.display = 'none';
+      document.getElementById('m-editor-ui').style.display = 'block';
+      renderGrid('m-grid', mobileGrid, selectedColor);
+      mobileBtnState = 'wait';
+    }
+    function clearMobile() { clearGridData(mobileGrid); renderGrid('m-grid', mobileGrid, selectedColor); }
+    function clearDesktop() { clearGridData(pcGrid); renderGrid('pc-grid', pcGrid, selectedColor); }
+    function clearGridData(grid) { for(let r=0; r<11; r++) for(let c=0; c<11; c++) grid[r][c] = 0; }
+    function openDesktopEditor() { renderGrid('pc-grid', pcGrid, selectedColor); document.getElementById('modal-editor').style.display = 'flex'; }
+    function savePCPony() {
+      let name = document.getElementById('pc-name').value.trim().replace(/[^a-zA-Z0-9]/g, '');
+      if (!name) name = "PLAYER";
+      name = name.toUpperCase();
+      requestSpawnPony(name, pcGrid, selectedColor);
+      document.getElementById('modal-editor').style.display = 'none';
+    }
+
+    function initEditor(gridId, colorId, dataGrid) {
+      const gridEl = document.getElementById(gridId);
+      const colorEl = document.getElementById(colorId);
+      colorEl.innerHTML = '';
+
+      Object.values(COLORS).forEach(c => {
+        const dot = document.createElement('div');
+        dot.className = `c-dot ${c === selectedColor ? 'active' : ''}`;
+        dot.style.background = c;
+        dot.onclick = () => {
+          selectedColor = c;
+          renderGrid(gridId, dataGrid, selectedColor);
+          Array.from(colorEl.children).forEach(d => d.classList.remove('active'));
+          dot.classList.add('active');
+        };
+        colorEl.appendChild(dot);
+      });
+
+      renderGrid(gridId, dataGrid, selectedColor);
+
+      let drawing = false, eraseMode = false;
+
+      const getCellCoords = (e) => {
+        const t = e.touches ? e.touches[0] : e;
+        const el = document.elementFromPoint(t.clientX, t.clientY);
+        if (el && el.classList.contains('editor-cell')) {
+          return { r: parseInt(el.dataset.r), c: parseInt(el.dataset.c), el: el };
+        }
+        return null;
+      };
+
+      const startDraw = (e) => {
+        if(e.cancelable) e.preventDefault();
+        drawing = true;
+        const cell = getCellCoords(e);
+        if (cell) {
+          eraseMode = dataGrid[cell.r][cell.c] === 1;
+          updateCell(cell.r, cell.c, cell.el);
+        }
+      };
+
+      const moveDraw = (e) => {
+        if (!drawing) return;
+        if(e.cancelable) e.preventDefault();
+        const cell = getCellCoords(e);
+        if (cell) updateCell(cell.r, cell.c, cell.el);
+      };
+
+      const endDraw = () => { drawing = false; };
+
+      const updateCell = (r, c, el) => {
+        const targetVal = eraseMode ? 0 : 1;
+        if (dataGrid[r][c] !== targetVal) {
+          dataGrid[r][c] = targetVal;
+          if (targetVal === 1) {
+            el.style.background = selectedColor;
+            el.style.boxShadow = `0 0 5px ${selectedColor}`;
+          } else {
+            el.style.background = '#000';
+            el.style.boxShadow = 'none';
+          }
+        }
+      };
+
+      gridEl.onmousedown = gridEl.ontouchstart = startDraw;
+      window.onmousemove = window.ontouchmove = moveDraw;
+      window.onmouseup = window.ontouchend = endDraw;
+    }
+
+    function renderGrid(id, data, color) {
+      const el = document.getElementById(id);
+      el.innerHTML = '';
+      data.forEach((row, r) => row.forEach((val, c) => {
+        const cell = document.createElement('div');
+        cell.className = 'editor-cell';
+        cell.dataset.r = r;
+        cell.dataset.c = c;
+        if(val) {
+          cell.style.background = color;
+          cell.style.boxShadow = `0 0 5px ${color}`;
+        } else {
+          cell.style.background = '#000';
+        }
+        el.appendChild(cell);
+      }));
+    }
   </script>
 </body>
 </html>
